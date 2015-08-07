@@ -23,7 +23,7 @@ gps_dat$month<-month(gps_dat$DateTime)
 gps_dat$year<-year(gps_dat$DateTime)
 
 plot(Latitude~Longitude, gps_dat, pch=16, cex=0.5, col=factor(year))
-map("worldHires", add=T,  col=3)
+map("worldHires", add=T,  col=4)
 
 plot(Latitude~Longitude, gps_dat, pch=16, cex=0.5, col=factor(Type))
 map("worldHires", add=T,  col=3)
