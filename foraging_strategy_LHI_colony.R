@@ -1,4 +1,4 @@
-library(xlsx)
+library(readxl)
 library(ggplot2)
 library(lubridate)
 
@@ -15,6 +15,8 @@ m1<-m1[,-1]
 weight<-read_excel("~/grive/phd/fieldwork/LHI_Feb_2015/data/Chick_data_2015.xlsx", 1 ,
                    skip=2, col_names=T, col_types=c("character", 
                                                     rep("numeric", 59)))
+
+ck_death<-data.frame(NestId=weight$NestID, Survival=names(weight)[apply(weight, 1, FUN=function(x) max(which(is.na(x)!=TRUE)))])
 
 gg_feed<-NULL
 for (i in 3:max(which(colSums(weight[,2:59], na.rm=T)>0))) # weight changes run from the 18th of Feb
@@ -70,3 +72,124 @@ for(j in atten_nests)
 # remember attendence data is shifted forward 1 day to match the corresponding chick weight.
 
 write.csv(nest_comp, "LHI_2015_nest_weights_attendance.csv", row.names=F, quote=F)
+
+###### next stage of data cleaning ######
+
+nest_comp$LW_corr<-nest_comp$LW
+nest_comp$RW_corr<-nest_comp$RW
+
+nest_comp[nest_comp$LW=="D",]
+
+nest_comp[nest_comp$LW=="D" & nest_comp$Chick=="Not fed",]$LW_corr<-"A"
+nest_comp[nest_comp$LW=="D" & nest_comp$Chick=="Not fed",]$RW_corr<-"A"
+
+nest_comp[nest_comp$LW_corr=="D" & nest_comp$diff==0,]
+
+weight[weight$NestID==24,] ## correct for nest 24
+
+nest_comp[nest_comp$LW_corr=="D" &  nest_comp$diff==0 & nest_comp$NestID==24,]$LW_corr<-"A"
+nest_comp[nest_comp$LW_corr=="D" &  nest_comp$diff==0 & nest_comp$NestID==24,]$RW_corr<-"A"
+
+nest_comp[nest_comp$Date==nest_comp$Date[39],] #for the date we went to the golfy and didnt sample
+
+nest_comp[nest_comp$Date==nest_comp$Date[39],]$LW_corr<-"D"
+nest_comp[nest_comp$Date==nest_comp$Date[39],]$RW_corr<-"D"
+
+nest_comp[nest_comp$Date==nest_comp$Date[39]& nest_comp$Chick=="Not fed",]$LW_corr<-"A"
+nest_comp[nest_comp$Date==nest_comp$Date[39]& nest_comp$Chick=="Not fed",]$RW_corr<-"A"
+
+## descriptive stuff. Size of meals from individual and both parent visits
+
+mean(nest_comp[nest_comp$LW_corr=="B" & nest_comp$RW_corr=="B" & nest_comp$Chick=="Fed",]$diff, na.rm=T)
+# 50.59375 nrow =80
+mean(nest_comp[nest_comp$LW_corr=="B" & nest_comp$RW_corr=="A" & nest_comp$Chick=="Fed",]$diff, na.rm=T)
+# 25.37844 nrow =218
+mean(nest_comp[nest_comp$RW_corr=="B" & nest_comp$LW_corr=="A"  & nest_comp$Chick=="Fed",]$diff, na.rm=T)
+# 27.54255 nrow =282
+
+meal_hist_dat<-rbind(data.frame(Feeder="both", Meal_size =nest_comp[nest_comp$LW_corr=="B" & nest_comp$RW_corr=="B" & nest_comp$Chick=="Fed",]$diff),
+                     data.frame(Feeder="LW", Meal_size =nest_comp[nest_comp$LW_corr=="B" & nest_comp$RW_corr=="A" & nest_comp$Chick=="Fed",]$diff),
+                     data.frame(Feeder="RW", Meal_size =nest_comp[nest_comp$RW_corr=="B" & nest_comp$LW_corr=="A" & nest_comp$Chick=="Fed",]$diff),
+                     data.frame(Feeder="Unknown", Meal_size =nest_comp[nest_comp$LW_corr=="D" & nest_comp$Chick=="Fed",]$diff))
+
+meal_hist<-ggplot(meal_hist_dat, aes(x=Meal_size, fill=Feeder))
+meal_hist+geom_bar(position="dodge")
+
+meal_hist<-ggplot(meal_hist_dat, aes(x=Meal_size, ..density.., colour=Feeder))
+meal_hist+geom_freqpoly(binwidth = 10)
+
+meal_hist<-ggplot(meal_hist_dat, aes(x=Meal_size, fill=Feeder))
+meal_hist+geom_density(alpha=0.4)
+
+# bit of pred modelling
+
+meal_mod_dat<-rbind(data.frame(Feeder="both", Meal_size =nest_comp[nest_comp$LW_corr=="B" & nest_comp$RW_corr=="B" & nest_comp$Chick=="Fed",]$diff),
+                     data.frame(Feeder="single", Meal_size =nest_comp[nest_comp$LW_corr=="B" & nest_comp$RW_corr=="A" & nest_comp$Chick=="Fed",]$diff),
+                     data.frame(Feeder="single", Meal_size =nest_comp[nest_comp$RW_corr=="B" & nest_comp$LW_corr=="A" & nest_comp$Chick=="Fed",]$diff))
+                     
+                     
+test_data<- data.frame(Feeder="Unknown", Meal_size =nest_comp[nest_comp$LW_corr=="D" & nest_comp$Chick=="Fed",]$diff)
+
+t1<-tree(Feeder~Meal_size, data=meal_mod_dat[meal_mod_dat$Feeder!="Unknown",])
+
+meal_mod_dat$tree_pred<-predict(t1, meal_mod_dat)
+
+m1<-glm(class~Meal_size, data=meal_hist_dat[meal_hist_dat$Feeder!="Unknown",], family=binomial)
+
+## need equal numbers of each class for tree to work well.. hmm maybe the higher numbers in the
+
+d1<-data.frame(Feeder="both", Meal_size= meal_mod_dat[meal_mod_dat$Feeder=="both",]$Meal_size)
+d1<-rbind(d1,data.frame(Feeder="single", Meal_size=sample(meal_mod_dat[meal_mod_dat$Feeder=="single",]$Meal_size, 80)))
+
+t2<-tree(Feeder~Meal_size, data=d1)
+d1$tree_pred<-predict(t2, d1)
+
+m2<-glm(Feeder~Meal_size, data=d1, family=binomial)
+d1$glm_pred<-predict(m2, d1, type="response")
+
+## t2 and m2 are simple models, to make more robust bootstrap with more randomly sampled 80 'single' datapoints
+## however is fine for what we want (helping decide if both or only one adult fed the ck)
+
+## so lets assign LW/RW returns to don't know classed visits
+
+nest_comp$LW_assn<-nest_comp$LW_corr
+nest_comp$RW_assn<-nest_comp$RW_corr
+
+nest_comp[nest_comp$LW_corr=="D",]
+
+funny<-function(x) 
+  { 
+  
+  if(is.na(x)){LWO<-"NA"; RWO<-"NA"}else{
+    
+  Z1<-sample(c("both", "single"),1, prob=predict(t2, newdata=data.frame(Meal_size=x))) # could add modifier 80/500
+  
+  if(Z1=="single")
+    {LWO<-sample(c("B", "A"),1,)
+     if(LWO=="B"){RWO<-"A"}else{RWO<-"B"}}
+  
+  if(Z1=="both")
+  {LWO<-"B"; RWO<-"B"}}
+  
+  return(c(LWO, RWO))}
+
+out<-lapply(nest_comp[nest_comp$LW_corr=="D",]$diff, FUN=funny)  
+
+nest_comp[nest_comp$LW_corr=="D",]$LW_assn<-unlist(out)[seq(1,313,2)]
+nest_comp[nest_comp$LW_corr=="D",]$RW_assn<-unlist(out)[seq(2,314,2)]
+
+## can look at each nest time series now
+ggplot(data=nest_comp[nest_comp$NestID==18,], aes(y=weight, x=Date))+
+  +     geom_line()+geom_point(aes(x=Date, y=diff)) + 
+  +     geom_line(aes(x=Date, y=as.numeric(LW_assn)*100), colour="green")+
+  +     geom_line(aes(x=Date, y=as.numeric(RW_assn)*100), colour="red")
+
+## count up them trips (using corrected first to be conservative)
+
+nest_comp[nest_comp$NestID==18,]$LW_corr
+
+backs<-which(nest_comp[nest_comp$NestID==18,]$LW_corr=="B")
+dunnos<-which(nest_comp[nest_comp$NestID==18,]$LW_corr=="D")
+
+
+
