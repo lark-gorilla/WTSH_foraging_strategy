@@ -130,11 +130,12 @@ meal_mod_dat<-rbind(data.frame(Feeder="both", Meal_size =nest_comp[nest_comp$LW_
                      
 test_data<- data.frame(Feeder="Unknown", Meal_size =nest_comp[nest_comp$LW_corr=="D" & nest_comp$Chick=="Fed",]$diff)
 
-t1<-tree(Feeder~Meal_size, data=meal_mod_dat[meal_mod_dat$Feeder!="Unknown",])
+library(tree)
+t1<-tree(Feeder~Meal_size, data=meal_mod_dat)
 
 meal_mod_dat$tree_pred<-predict(t1, meal_mod_dat)
 
-m1<-glm(class~Meal_size, data=meal_hist_dat[meal_hist_dat$Feeder!="Unknown",], family=binomial)
+m1<-glm(Feeder~Meal_size, data=meal_hist_dat, family=binomial)
 
 ## need equal numbers of each class for tree to work well.. hmm maybe the higher numbers in the
 
@@ -147,6 +148,8 @@ d1$tree_pred<-predict(t2, d1)
 m2<-glm(Feeder~Meal_size, data=d1, family=binomial)
 d1$glm_pred<-predict(m2, d1, type="response")
 
+sum(resid(m2, type="pearson")^2)/158
+
 ## t2 and m2 are simple models, to make more robust bootstrap with more randomly sampled 80 'single' datapoints
 ## however is fine for what we want (helping decide if both or only one adult fed the ck)
 
@@ -157,13 +160,14 @@ nest_comp$RW_assn<-nest_comp$RW_corr
 
 nest_comp[nest_comp$LW_corr=="D",]
 
+# using the m1 model in this loop as it gives more realistic predictions than m2 
 funny<-function(x) 
   { 
   
   if(is.na(x)){LWO<-"NA"; RWO<-"NA"}else{
-    
-  Z1<-sample(c("both", "single"),1, prob=predict(t2, newdata=data.frame(Meal_size=x))) # could add modifier 80/500
-  
+   
+  Z1<-sample(c("single", "both"),1, prob=
+               c(predict(m1, newdata=data.frame(Meal_size=x), type="response"),1-predict(m1, newdata=data.frame(Meal_size=x), type="response"))) 
   if(Z1=="single")
     {LWO<-sample(c("B", "A"),1,)
      if(LWO=="B"){RWO<-"A"}else{RWO<-"B"}}
@@ -178,18 +182,119 @@ out<-lapply(nest_comp[nest_comp$LW_corr=="D",]$diff, FUN=funny)
 nest_comp[nest_comp$LW_corr=="D",]$LW_assn<-unlist(out)[seq(1,313,2)]
 nest_comp[nest_comp$LW_corr=="D",]$RW_assn<-unlist(out)[seq(2,314,2)]
 
-## can look at each nest time series now
-ggplot(data=nest_comp[nest_comp$NestID==18,], aes(y=weight, x=Date))+
-  +     geom_line()+geom_point(aes(x=Date, y=diff)) + 
-  +     geom_line(aes(x=Date, y=as.numeric(LW_assn)*100), colour="green")+
-  +     geom_line(aes(x=Date, y=as.numeric(RW_assn)*100), colour="red")
 
-## count up them trips (using corrected first to be conservative)
+write.csv(nest_comp, "LHI_2015_nest_weights_attendance_cleaned.csv", row.names=F, quote=F)
 
-nest_comp[nest_comp$NestID==18,]$LW_corr
+nest_comp<-read.csv("LHI_2015_nest_weights_attendance_cleaned.csv", h=T, strip.white=T)
+nest_comp$Date<-ymd(nest_comp$Date)
 
-backs<-which(nest_comp[nest_comp$NestID==18,]$LW_corr=="B")
-dunnos<-which(nest_comp[nest_comp$NestID==18,]$LW_corr=="D")
+nest_comp<-nest_comp[-which(is.na(nest_comp$weight) & is.na(nest_comp$LW_assn)),] # kill shit!
+
+
+
+
+## bootstrapping
+bs1000_tl<-data.frame(tlength=seq(1:25))
+for(h in 1:100)
+  
+{
+  out<-lapply(nest_comp[nest_comp$LW_corr=="D",]$diff, FUN=funny)  
+  
+  nest_comp[nest_comp$LW_corr=="D",]$LW_assn<-unlist(out)[seq(1,313,2)]
+  nest_comp[nest_comp$LW_corr=="D",]$RW_assn<-unlist(out)[seq(2,314,2)]
+  
+  ## can look at each nest time series now
+  #ggplot(data=nest_comp[nest_comp$NestID==18,], aes(y=weight, x=Date)) + geom_line()+geom_point(aes(x=Date, y=diff))+  
+  #geom_line(aes(x=Date, y=as.numeric(LW_assn)*100), colour="green")+
+  #geom_line(aes(x=Date, y=as.numeric(RW_assn)*100), colour="red")+
+  #geom_point(data=nest_comp[nest_comp$NestID==18 & nest_comp$LW_corr=="D",], aes(x=Date, y=200, colour="blue")
+  
+  
+  ## count up them trips
+  
+  #### !!! ####
+  # For comparison with Darren's data
+  
+  #nest_comp<-nest_comp[nest_comp$Date<"2015-03-02",] 
+  
+  all_trips<-NULL
+  for(i in unique(nest_comp$NestID))
+      {
+        for(j in c("LW", "RW"))
+        {
+          backs<-NULL;dunnos<-NULL
+          if(j=="LW")
+              {backs<-which(nest_comp[nest_comp$NestID==i,]$LW_assn=="B")
+               dunnos<-which(nest_comp[nest_comp$NestID==i,]$LW_assn=="D")}
+          if(j=="RW")
+          {backs<-which(nest_comp[nest_comp$NestID==i,]$RW_assn=="B")
+           dunnos<-which(nest_comp[nest_comp$NestID==i,]$RW_assn=="D")}
+        
+          trip_lz<-NULL  
+          for(k in 2:length(backs))
+                {
+              if(TRUE %in% (dunnos>backs[k-1] & dunnos<backs[k])){next}
+              tl1<-backs[k]-backs[k-1]
+              trip_lz<-c(trip_lz, tl1) 
+                }
+        df_internal<-data.frame(NestID=i, BirdID=j, tLength=trip_lz)
+        all_trips<-rbind(all_trips, df_internal)
+        }
+      }
+  
+  # cool but we should remove nests 48 (one of the parents bailed) and 51 (no backs!) and 38, cos nothing going on then ck died
+  
+  all_trips<-all_trips[all_trips$NestID!=48,]
+  all_trips<-all_trips[all_trips$NestID!=51,]
+  all_trips<-all_trips[all_trips$NestID!=38,]
+  
+  #ggplot(all_trips, aes(x=tLength, ..density.., colour=as.factor(NestID)))+geom_freqpoly(binwidth = 1)
+  ## not amazing
+  
+  ## lets do Brad and Darren's proportion of time spent foraging
+  
+  all_trips$BirdID2<-paste(all_trips$NestID, all_trips$BirdID,sep="_")
+  
+  trip_propz<-NULL
+  for(i in unique(all_trips$BirdID2))
+      {
+      if(is.na(all_trips[all_trips$BirdID2==i,]$tLength)){next}
+      df1<-data.frame(BirdID2=i,table(all_trips[all_trips$BirdID2==i,]$tLength))
+      df1$Var1<-as.numeric(as.character(df1$Var1))
+      df1$TotTrip<-df1$Var1 * df1$Freq 
+      df1$TripProp<-df1$TotTrip/sum(df1$TotTrip)
+      print(i);print(sum(df1$TotTrip))
+      trip_propz<-rbind(trip_propz, df1)
+      }
+  
+  length(unique(trip_propz$BirdID2))
+  # 60 birds monitored
+  
+  tripProp60<-NULL
+  for(i in 1:25)
+  { 
+  df1<-data.frame(tLength=i, tProp60=sum(trip_propz[trip_propz$Var1==i,]$TripProp)/length(unique(trip_propz$BirdID2)))
+  tripProp60<-rbind(tripProp60, df1)
+  }
+ 
+ bs1000_tl<-cbind(bs1000_tl, tripProp60[,2] )
+
+ names(bs1000_tl)[names(bs1000_tl)=="tripProp60[, 2]"]<-paste("run", h, sep="_")
+ print(h)
+}
+
+bs1000_tl[bs1000_tl==0]<-NA
+
+bs_smry<-data.frame(tlength=seq(1:25))
+bs_smry$mean_prop<-apply(bs1000_tl,1,mean, na.rm=T)
+bs_smry$sd_prop<-apply(bs1000_tl,1,sd, na.rm=T)
+
+bs_smry<-na.omit(bs_smry)
+
+pp<-ggplot(bs_smry, aes(x=tlength, y=mean_prop))
+pp+geom_bar(stat="identity")
+
+
 
 
 
