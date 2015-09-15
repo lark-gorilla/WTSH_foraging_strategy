@@ -46,21 +46,19 @@ fun_single<-function(x)
   
   return(c(LWO, RWO))}
 
-### Use this to set specific dates to test temporal foraging strat changes
+### Parameters
 
 D1="2015-02-18"
-D2="2015-03-01"  
-
-#nest_comp<-nest_comp[nest_comp$Date<"2015-03-02",] #just 2 weeks in Feb
-#nest_comp<-nest_comp[nest_comp$Date<"2015-03-19",] # allows 1 month from mid feb start (for long trips to get back)
-#nest_comp<-nest_comp[nest_comp$Date>"2015-03-10",] # allows 1 month from mid march to apr
+D2="2015-03-01" 
+longallow=TRUE
+feed_fun=fun_single
 
 ## bootstrapping
 bs1000_tl<-data.frame(tLength=seq(1:25))
 for(h in 1:1000)
   
 {
-  out<-lapply(nest_comp[nest_comp$LW_corr=="D",]$diff, FUN=fun_single)  
+  out<-lapply(nest_comp[nest_comp$LW_corr=="D",]$diff, FUN=feed_fun)  
   
   nest_comp[nest_comp$LW_corr=="D",]$LW_assn<-unlist(out)[seq(1,(length(unlist(out))-1),2)]
   nest_comp[nest_comp$LW_corr=="D",]$RW_assn<-unlist(out)[seq(2,length(unlist(out)),2)]
@@ -68,40 +66,50 @@ for(h in 1:1000)
   all_trips<-NULL
   for(i in unique(nest_comp$NestID))
   {
-    for(j in c("LW", "RW")) # the below calc of backs allows trips that start within the time period but not end to be included
-    {
-      backs<-NULL
-      if(j=="LW")
-      {backs<-which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1 & nest_comp$Date<=D2,]$LW_assn=="B")
-       
-       if(max(backs)<nrow(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1 & nest_comp$Date<=D2,]))
-       {backs<-c(backs, which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1,]$LW_assn=="B")[length(backs)+1])
-        backs<-na.omit(backs)}
+    for(j in c("LW", "RW"))
+      {  
+      if(longallow==TRUE)
+        {
+          backs<-NULL
+          if(j=="LW")
+          {
+            backs<-which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1 & nest_comp$Date<=D2,]$LW_assn=="B")
+           if(max(backs)<nrow(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1 & nest_comp$Date<=D2,]))
+             {
+              backs<-c(backs, which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1,]$LW_assn=="B")[length(backs)+1])
+              backs<-na.omit(backs)
+             }
+          }
+          
+          if(j=="RW")
+          {
+            backs<-which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1 & nest_comp$Date<=D2,]$RW_assn=="B")
+           if(max(backs)<nrow(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1 & nest_comp$Date<=D2,]))
+             {
+              backs<-c(backs, which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1,]$RW_assn=="B")[length(backs)+1])
+              backs<-na.omit(backs)
+             }
+          }
+        }
+        
+      if(longallow==FALSE)
+        {  
+        backs<-NULL
+        if(j=="LW")
+          {backs<-which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1 & nest_comp$Date<=D2,]$LW_assn=="B")}
+        if(j=="RW")
+          {backs<-which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1 & nest_comp$Date<=D2,]$RW_assn=="B")}
+        }
+        
+        trip_lz<-NULL  
+        for(k in 2:length(backs))
+          {
+          tl1<-backs[k]-backs[k-1]
+          trip_lz<-c(trip_lz, tl1) 
+          }
+        df_internal<-data.frame(NestID=i, BirdID=j, tLength=trip_lz)
+        all_trips<-rbind(all_trips, df_internal)
       }
-      
-      if(j=="RW")
-      {backs<-which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1 & nest_comp$Date<=D2,]$RW_assn=="B")
-       
-       if(max(backs)<nrow(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1 & nest_comp$Date<=D2,]))
-       {backs<-c(backs, which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1,]$RW_assn=="B")[length(backs)+1])
-        backs<-na.omit(backs)}
-      }
-      
-      #if(j=="LW")
-      #{backs<-which(nest_comp[nest_comp$NestID==i,]$LW_assn=="B")}
-      #if(j=="RW")
-      #{backs<-which(nest_comp[nest_comp$NestID==i,]$RW_assn=="B")}
-      
-      
-      trip_lz<-NULL  
-      for(k in 2:length(backs))
-      {
-        tl1<-backs[k]-backs[k-1]
-        trip_lz<-c(trip_lz, tl1) 
-      }
-      df_internal<-data.frame(NestID=i, BirdID=j, tLength=trip_lz)
-      all_trips<-rbind(all_trips, df_internal)
-    }
   }
   
   all_trips$BirdID2<-paste(all_trips$NestID, all_trips$BirdID,sep="_")
@@ -149,5 +157,4 @@ pp+geom_bar(stat="identity", fill="dark grey", colour="black")+
   scale_x_continuous(breaks=seq(1:25))+
   theme_classic()+ylab("Mean time spent forgaing (prop)")+xlab("Duration of foraging trip (days)")
 
-ggsave("LHI_foraging_mar_apr_15_single_feed_assn.png")
-
+ggsave(paste("LHI15_foraging",D1, D2, "longallow", longallow, "feed_fun_SINGLE.png", sep="_")) #change feed_fun manually!
