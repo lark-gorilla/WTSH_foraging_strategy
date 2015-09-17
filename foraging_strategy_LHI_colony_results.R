@@ -12,6 +12,9 @@ nest_comp<-nest_comp[nest_comp$NestID!=48,]
 nest_comp<-nest_comp[nest_comp$NestID!=51,]
 nest_comp<-nest_comp[nest_comp$NestID!=38,]
 nest_comp<-nest_comp[nest_comp$NestID!=14,]
+#nest_comp<-nest_comp[nest_comp$NestID!=2,] #extra nests that appear one adult appears to abandon
+#nest_comp<-nest_comp[nest_comp$NestID!=6,]
+#nest_comp<-nest_comp[nest_comp$NestID!=33,]
 
 ## create simple predictive model to predict when feeding by both adults occurs
 meal_mod_dat<-rbind(data.frame(Feeder="both", Meal_size =nest_comp[nest_comp$LW_corr=="B" & nest_comp$RW_corr=="B" & nest_comp$Chick=="Fed",]$diff),
@@ -51,14 +54,15 @@ fun_single<-function(x)
 
 ### Parameters
 
-D1="2015-02-18"
-D2="2015-03-16" 
+D1="2015-03-16"
+D2="2015-04-11" 
 longallow=FALSE
 feed_fun=fun_single
 
 ## bootstrapping
 bs1000_tl<-data.frame(tLength=seq(1:25))
 bs1000_Ntl<-expand.grid(tLength=seq(1:25), NestID=unique(nest_comp$NestID))
+mean_tl<-data.frame(NestID=unique(nest_comp$NestID))
 
 for(h in 1:1000)
   
@@ -116,6 +120,9 @@ for(h in 1:1000)
         all_trips<-rbind(all_trips, df_internal)
       }
   }
+  #
+  agg1<-aggregate(tLength~NestID, all_trips,  FUN=mean)
+  
   
   # to calc hists per individual nests (pairs) %%$$
   nest_propz<-NULL
@@ -168,6 +175,10 @@ for(h in 1:1000)
   # compile nests bootstrap
   bs1000_Ntl<-cbind(bs1000_Ntl, tripPropN[,3] )
   names(bs1000_Ntl)[names(bs1000_Ntl)=="tripPropN[, 3]"]<-paste("run", h, sep="_")
+ 
+  #compile mean trips per nest
+  mean_tl<-cbind(mean_tl,agg1[,2])
+  names(mean_tl)[names(mean_tl)=="agg1[, 2]"]<-paste("run", h, sep="_")
   print(h)
 }
 
@@ -207,6 +218,22 @@ pp+geom_bar(stat="identity", fill="dark grey", colour="black")+
   theme_bw()+ylab("Mean time spent foraging (prop)")+xlab("Duration of foraging trip (days)")+facet_wrap(~NestID)
 
 ggsave(paste("LHI15_Nest_foraging",D1, D2, "longallow", longallow, "feed_fun_SINGLE.png", sep="_"), scale=2) #change feed_fun manually!
+
+# Test whether chick size (tarsus) effects foraging strategy
+
+tarsus<-read_excel("~/grive/phd/fieldwork/LHI_Feb_2015/data/Chick_data_2015.xlsx", 2 ,
+                   skip=2, col_names=T, col_types=c("character", 
+                                                    rep("numeric", 59)))
+
+tar_tl<-data.frame(NestID=mean_tl[,1])
+tar_tl$bs_mean_tl<-apply(mean_tl[,2:length(mean_tl)],1,mean, na.rm=T)
+tar_tl$bs_sd_tl<-apply(mean_tl[,2:length(mean_tl)],1,sd, na.rm=T)
+temp_tar<-tarsus[tarsus$NestID %in% unique(tar_tl$NestID),]
+tar_tl$mean_tar<-rowMeans(temp_tar[,2:length(temp_tar)], na.rm=T)
+
+limits <- aes(ymax = bs_mean_tl + bs_sd_tl, ymin=bs_mean_tl - bs_sd_tl)
+pp<-ggplot(tar_tl, aes(x=mean_tar, y=bs_mean_tl))
+pp+geom_point()+geom_errorbar(limits, width=0.5)
 
 
 ### dicking around
