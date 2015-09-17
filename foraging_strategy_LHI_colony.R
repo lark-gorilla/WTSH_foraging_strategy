@@ -135,25 +135,19 @@ t1<-tree(Feeder~Meal_size, data=meal_mod_dat)
 
 meal_mod_dat$tree_pred<-predict(t1, meal_mod_dat)
 
-m1<-glm(Feeder~Meal_size, data=meal_hist_dat, family=binomial)
+m1<-glm(Feeder~Meal_size, data=meal_mod_dat, family=binomial)
 
-## need equal numbers of each class for tree to work well.. hmm maybe the higher numbers in the
+######
+# Test whether chick size (tarsus) effects foraging strategy
 
-d1<-data.frame(Feeder="both", Meal_size= meal_mod_dat[meal_mod_dat$Feeder=="both",]$Meal_size)
-d1<-rbind(d1,data.frame(Feeder="single", Meal_size=sample(meal_mod_dat[meal_mod_dat$Feeder=="single",]$Meal_size, 80)))
-
-t2<-tree(Feeder~Meal_size, data=d1)
-d1$tree_pred<-predict(t2, d1)
-
-m2<-glm(Feeder~Meal_size, data=d1, family=binomial)
-d1$glm_pred<-predict(m2, d1, type="response")
-
-sum(resid(m2, type="pearson")^2)/158
-
-## t2 and m2 are simple models, to make more robust bootstrap with more randomly sampled 80 'single' datapoints
-## however is fine for what we want (helping decide if both or only one adult fed the ck)
+tarsus<-read_excel("~/grive/phd/fieldwork/LHI_Feb_2015/data/Chick_data_2015.xlsx", 2 ,
+                   skip=2, col_names=T, col_types=c("character", 
+                                                    rep("numeric", 59)))
 
 
-
+agg1<-aggregate(tLength~NestID, all_trips,  FUN=mean)
+agg1$NID<-tarsus[tarsus$NestID %in% unique(agg1$NestID),][,1]
+agg1$T1<-tarsus[tarsus$NestID %in% unique(agg1$NestID),][,2]
+agg1$T2<-tarsus[tarsus$NestID %in% unique(agg1$NestID),][,6]
 
 
