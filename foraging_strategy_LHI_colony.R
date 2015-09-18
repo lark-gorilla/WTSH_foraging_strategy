@@ -16,7 +16,6 @@ weight<-read_excel("~/grive/phd/fieldwork/LHI_Feb_2015/data/Chick_data_2015.xlsx
                    skip=2, col_names=T, col_types=c("character", 
                                                     rep("numeric", 59)))
 
-ck_death<-data.frame(NestId=weight$NestID, Survival=names(weight)[apply(weight, 1, FUN=function(x) max(which(is.na(x)!=TRUE)))])
 
 gg_feed<-NULL
 for (i in 3:max(which(colSums(weight[,2:59], na.rm=T)>0))) # weight changes run from the 18th of Feb
@@ -30,6 +29,10 @@ gg_feed$Date<-dmy(substr(gg_feed$Date,1,11))
 gg_feed$Chick<-as.factor(sapply(gg_feed$diff, FUN=function(x) (if(is.na(x)) {x="NA"}else{if(x>=0){"Fed"}else{"Not fed"}})))
 ## have set to weight diff = 0 then is 'fed' ie hasnt lost mass in 24 hr, althou for starving chicks this could be flatlining
 
+# Did chicks stack it at a certainl point?
+ck_death<-data.frame(NestID=weight$NestID, Date=names(weight)[apply(weight, 1, FUN=function(x) max(which(is.na(x)!=TRUE)))])
+ck_death$Date<-dmy(substr(ck_death$Date,1,11))
+ggplot(data=gg_feed[gg_feed$Chick=="Fed",], aes(y=diff, x=Date, group=Date)) + geom_boxplot() + geom_point(data=ck_death, aes(y=NestID, x=Date, colour="red"))
 
 ### initially just for ck1
 
@@ -73,6 +76,11 @@ for(j in atten_nests)
 
 write.csv(nest_comp, "LHI_2015_nest_weights_attendance.csv", row.names=F, quote=F)
 
+## does appear like we are overly harrassing the tracked/attendenc birds
+gg_feed$harrass<-"no"
+gg_feed[gg_feed$NestID %in% nest_comp$NestID,]$harrass<-"yes"
+ggplot(data=gg_feed, aes(y=weight, x=Date, group=Date)) + geom_boxplot() +facet_wrap(~harrass)
+
 ###### next stage of data cleaning ######
 
 nest_comp$LW_corr<-nest_comp$LW
@@ -97,6 +105,15 @@ nest_comp[nest_comp$Date==nest_comp$Date[39],]$RW_corr<-"D"
 
 nest_comp[nest_comp$Date==nest_comp$Date[39]& nest_comp$Chick=="Not fed",]$LW_corr<-"A"
 nest_comp[nest_comp$Date==nest_comp$Date[39]& nest_comp$Chick=="Not fed",]$RW_corr<-"A"
+
+# writing out nest_comp
+write.csv(nest_comp, "LHI_2015_nest_weights_attendance_cleaned.csv", row.names=F, quote=F)
+
+## Now can start from here for analyses using nest_comp
+
+nest_comp<-read.csv("LHI_2015_nest_weights_attendance_cleaned.csv", h=T, strip.white=T)
+
+nest_comp$Date<-ymd(nest_comp$Date)
 
 ## descriptive stuff. Size of meals from individual and both parent visits
 
@@ -138,16 +155,78 @@ meal_mod_dat$tree_pred<-predict(t1, meal_mod_dat)
 m1<-glm(Feeder~Meal_size, data=meal_mod_dat, family=binomial)
 
 ######
-# Test whether chick size (tarsus) effects foraging strategy
+## compare multiple years of ck weight
 
-tarsus<-read_excel("~/grive/phd/fieldwork/LHI_Feb_2015/data/Chick_data_2015.xlsx", 2 ,
-                   skip=2, col_names=T, col_types=c("character", 
-                                                    rep("numeric", 59)))
+library(reshape2)
+
+weight_2004<-read.csv("~/grive/phd/sourced_data/IH_DP_moonphase/IH_DP_ck_weight_feb_may_04.csv", h=T)
+
+weight_2004<-weight_2004[weight_2004$AM_PM=="PM",] # select only PM weights, comparable with other yrs
+weight_2004$AM_PM<-NULL
+
+weight_2004<-melt(weight_2004, value.name="weight", id=1)
+names(weight_2004)[2]<-"NestID"
+
+weight_2014<-read_excel("~/grive/phd/fieldwork/LHI_Mar_2014/data/Chick_data_2014.xlsx", 1 ,
+                        skip=2, col_names=T, col_types=rep("numeric", 21)) #"DEAD" is converted NA
+
+weight_2014<-melt(weight_2014, value.name="weight", id=1)
+names(weight_2014)[2]<-"Date"
+
+weight_2014$Date<-as.Date(as.numeric(as.character(weight_2014$Date)), origin = "1899-12-30") # origin dumb on MS Excel
+
+weight_2015<-read_excel("~/grive/phd/fieldwork/LHI_Feb_2015/data/Chick_data_2015.xlsx", 1 ,
+                   skip=2, col_names=T, col_types=c("character", rep("numeric", 59)))
+
+weight_2015<-melt(weight_2015, value.name="weight", id=1)
+names(weight_2015)[2]<-"Date"
+
+#standardize and bind together
+
+weight_2004<-weight_2004[, c(2,1,3)] #reorder columns
+
+weight_2004$NestID<-as.character(weight_2004$NestID)
+weight_2014$NestID<-as.character(weight_2014$NestID)
+weight_2015$NestID<-as.character(weight_2015$NestID)
+
+weight_2004$Date<-dmy(weight_2004$Date)
+weight_2014$Date<-ymd(as.Date(as.numeric(as.character(weight_2014$Date)), origin = "1899-12-30"))
+weight_2015$Date<-dmy(weight_2015$Date)
+
+weight_yrs<-rbind(weight_2004, weight_2014, weight_2015)
+weight_yrs$Year<-year(weight_yrs$Date)
+weight_yrs<-weight_yrs[order(weight_yrs$Date),]
+
+weight_yrs$diff<-NA
+weight_yrs$temp_id<-paste(weight_yrs$Year, weight_yrs$NestID, sep="_")
+
+for (i in unique(weight_yrs$temp_id))
+{
+  for(j in 2:nrow(weight_yrs[weight_yrs$temp_id==i,]))
+  {
+    weight_yrs[weight_yrs$temp_id==i,]$diff[j]<-
+      weight_yrs[weight_yrs$temp_id==i,]$weight[j]-weight_yrs[weight_yrs$temp_id==i,]$weight[(j-1)]
+  }   
+}
+
+weight_yrs$temp_id<-NULL
+
+weight_yrs$Feed<-as.factor(sapply(weight_yrs$diff, FUN=function(x) (if(is.na(x)) {x="NA"}else{if(x>=0){"Fed"}else{"Not fed"}})))
+
+#
 
 
-agg1<-aggregate(tLength~NestID, all_trips,  FUN=mean)
-agg1$NID<-tarsus[tarsus$NestID %in% unique(agg1$NestID),][,1]
-agg1$T1<-tarsus[tarsus$NestID %in% unique(agg1$NestID),][,2]
-agg1$T2<-tarsus[tarsus$NestID %in% unique(agg1$NestID),][,6]
+p<-ggplot(data=weight_yrs[weight_yrs$year!="2014",], aes(y=weight, x=as.Date(Date, format="%d/%m"),
+                                                         group=Date, colour=year))
+p+geom_boxplot()
+
+library(dplyr)
+
+weight_mn<-summarise(group_by(weight_yrs, Date), mean_weight=mean(weight, na.rm=T))
+
+weight_mn$year=substr(weight_mn$Date,7,10)
+
+p<-ggplot(data=weight_mn, aes(y=mean_weight, x=as.Date(Date, format="%d/%m"), colour=year))
+p+geom_line()
 
 
