@@ -1,3 +1,4 @@
+rm(list=ls())
 library(readxl)
 library(ggplot2)
 library(lubridate)
