@@ -2,7 +2,7 @@ rm(list=ls())
 library(ggplot2)
 library(lubridate)
 
-setwd("~/grive/phd/analyses/foraging_strategy")
+setwd("D:/research/phd/analyses/foraging_strategy")
 
 # NEST COMP RECEIVED SOME MANUAL CLEANING IN CALC NAs in ck weight section changed to 0s
 nest_comp<-read.csv("LHI_2015_nest_weights_attendance_cleaned.csv", h=T, strip.white=T)
@@ -54,10 +54,31 @@ fun_single<-function(x)
 
 ### Parameters
 
-D1="2015-03-16"
+D1="2015-02-18"
 D2="2015-04-11" 
 longallow=FALSE
 feed_fun=fun_single
+
+##### EXTRA NEST PARAMETER TO RUN ANALYSES ON SELECTED NESTS. REREAD IN
+##### ALL ABOVE AFTER RUN !!!!!!!
+
+tar_comp<-read.csv("D:/research/phd/analyses/foraging_strategy/tarsus_comp_04_15.csv", h=T)
+
+summary(tar_comp[tar_comp$Date=="16/02/2004",]$Tar)
+summary(tar_comp[tar_comp$Date=="20/02/2004",]$Tar)
+
+summary(tar_comp[tar_comp$Date=="17/02/2015" & tar_comp$Tar<=37,]$Tar) # try with upper limit of 37mm for tarsus
+
+comparable_nests<-unique(nest_comp$NestID)[which(unique(nest_comp$NestID) %in%
+                                 tar_comp[tar_comp$Date=="17/02/2015" & tar_comp$Tar<=37,]$NestID)]
+
+summary(tar_comp[tar_comp$Date=="17/02/2015" & tar_comp$NestID %in% comparable_nests,]$Tar)
+
+## !! DANGER !! ##
+#nest_comp<-nest_comp[nest_comp$NestID %in% comparable_nests,]
+## !! DANGER !! ##
+
+##### !!!!!!!!!!!!!
 
 ## bootstrapping
 bs1000_tl<-data.frame(tLength=seq(1:25))
@@ -200,7 +221,7 @@ pp+geom_bar(stat="identity", fill="dark grey", colour="black")+
   scale_x_continuous(limits=c(0, limmy), breaks=seq(1,limmy))+
   theme_classic()+ylab("Mean time spent foraging (prop)")+xlab("Duration of foraging trip (days)")
 
-ggsave(paste("LHI15_foraging",D1, D2, "longallow", longallow, "feed_fun_SINGLE.png", sep="_")) #change feed_fun manually!
+ggsave(paste("LHI15_foraging",D1, D2, "longallow", longallow, "feed_fun_SINGLE_BIGTAR.png", sep="_")) #change feed_fun manually!
 
 #plot individual nests
 
@@ -217,11 +238,26 @@ pp+geom_bar(stat="identity", fill="dark grey", colour="black")+
   scale_x_continuous(limits=c(0,limmy), breaks=seq(1,limmy))+
   theme_bw()+ylab("Mean time spent foraging (prop)")+xlab("Duration of foraging trip (days)")+facet_wrap(~NestID)
 
-ggsave(paste("LHI15_Nest_foraging",D1, D2, "longallow", longallow, "feed_fun_SINGLE.png", sep="_"), scale=2) #change feed_fun manually!
+ggsave(paste("LHI15_Nest_foraging",D1, D2, "longallow", longallow, "feed_fun_SINGLE_BIGTAR.png", sep="_"), scale=2) #change feed_fun manually!
+
+###for wsc2 presentation
+
+limits <- aes(ymax = mean_prop + sd_prop, ymin=mean_prop - sd_prop)
+pp<-ggplot(bs_smry, aes(x=tLength, y=mean_prop))
+pp+geom_bar(stat="identity", fill="gray75", colour="black", width=0.6)+
+  geom_errorbar(limits, width=0.3)+
+  scale_x_continuous(expand=c(0,0),limits=c(0, 12.5), breaks=seq(1,13))+
+  scale_y_continuous(expand=c(0,0))+
+  theme_classic()+ylab("")+xlab("")+theme(
+  axis.text.y=element_text(size = rel(1)),axis.text.x=element_blank())
+
+ggsave(paste("WSCpres_LHI15_Nest_foraging",D1, D2, "longallow", longallow, "feed_fun_SINGLE.png", sep="_"), scale=2) #change feed_fun manually!
+
+
 
 # Test whether chick size (tarsus) effects foraging strategy
 
-tarsus<-read_excel("~/grive/phd/fieldwork/LHI_Feb_2015/data/Chick_data_2015.xlsx", 2 ,
+tarsus<-read_excel("D:/research/phd/fieldwork/LHI_Feb_2015/data/Chick_data_2015.xlsx", 2 ,
                    skip=2, col_names=T, col_types=c("character", 
                                                     rep("numeric", 59)))
 
@@ -235,6 +271,46 @@ limits <- aes(ymax = bs_mean_tl + bs_sd_tl, ymin=bs_mean_tl - bs_sd_tl)
 pp<-ggplot(tar_tl, aes(x=mean_tar, y=bs_mean_tl))
 pp+geom_point()+geom_errorbar(limits, width=0.5)
 
+## Compare Peck 2004 and my 2015 tarsus data (for end of Feb overlap)
+
+peck_tar<-read.csv("D:/research/phd/sourced_data/IH_DP_moonphase/peck2004_ck_tar_wgt.csv", h=T)
+
+peck_tar<-peck_tar[with(peck_tar, Date=="16/02/2004" | Date=="20/02/2004" | Date=="24/02/2004" |Date=="28/02/2004"),]
+
+tarsus<-tarsus[,which(colSums(tarsus, na.rm=TRUE)>0)]
+library(reshape2)
+miller_tar<-melt(tarsus, id.vars="NestID") #nice: melt sorts by NestID so tarsus measures now in chrono order :)
+
+tar_comp_peck<-data.frame(NestID=as.character(peck_tar$NestID), Date=peck_tar$Date, Tar=peck_tar$tarsus, Year="2004")
+
+tar_comp_miller<-data.frame(NestID=as.character(miller_tar[1:264,]$NestID), Date=miller_tar[1:264,]$variable, Tar=miller_tar[1:264,]$value, Year="2015")
+
+tar_comp<-rbind(tar_comp_peck, tar_comp_miller)
+
+tar_comp$DateGroup<-substr(tar_comp$Date, 2,2)
+tar_comp[tar_comp$Year=="2015",]$DateGroup<-as.character(
+  as.numeric(tar_comp[tar_comp$Year=="2015",]$DateGroup)-1)
+
+tar_comp[tar_comp$Date=="01/03/2015",]$DateGroup<-as.character(8)
+
+tar_comp[tar_comp$DateGroup=="6",]$DateGroup<-"16"
+tar_comp[tar_comp$DateGroup=="0",]$DateGroup<-"20"
+tar_comp[tar_comp$DateGroup=="4",]$DateGroup<-"24"
+tar_comp[tar_comp$DateGroup=="8",]$DateGroup<-"28"
+
+library(ggplot2)
+
+p<-ggplot(tar_comp, aes(x=DateGroup, y=Tar, colour=Year))
+p+geom_boxplot()+xlab("Day in February")+ylab("Tarsus length (mm)")+theme_classic()
+
+ggsave("D:/research/phd/analyses/foraging_strategy/tarsus_comp1_04_15.png") #change feed_fun manually!
+
+
+p<-ggplot(tar_comp, aes(x=Year, y=Tar, colour=DateGroup))
+p+geom_boxplot()+ylab("Tarsus length (mm)")+labs(colour="Day in February")+theme_classic()
+
+ggsave("D:/research/phd/analyses/foraging_strategy/tarsus_comp2_04_15.png") #change feed_fun manually!
+write.csv(tar_comp, "D:/research/phd/analyses/foraging_strategy/tarsus_comp_04_15.csv", quote=F, row.names=F)
 
 ### dicking around
 library("dplyr")
