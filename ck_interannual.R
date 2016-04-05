@@ -56,19 +56,22 @@ for(i in 2:length(weight_2016))
 all_weight<-rbind(w2014, w2015, w2016)
 all_weight$Weight<-as.numeric(all_weight$Weight)
 
+#library(moonsun)
+#dat$Julian.Date <- julian(as.Date(dat$Date, format="%d/%m/%Y"))
+# "Percentage of bright area visible from Earth"
+#dat$Phase <- sapply(dat$Julian.Date, function(date) { options(latitude=-31.55, longitude=159.083333); moon(date)$phase })
+
 all_weight$Date<-as.Date(as.numeric(as.character(all_weight$Date)), origin="1899-12-30")
 
 # Add in 2004 data
 all_weight<-rbind(all_weight, weight_2004)
 
-p<-ggplot(all_weight, aes(x=as.factor(Date), y=Weight, colour=Year))
-p+geom_boxplot()+facet_wrap(~Year) #hmmm not really.
+p<-ggplot(all_weight[all_weight$Year=="2004",], aes(x=Date, y=Weight, group=Date))
+p+geom_boxplot()
 
-
-all_weight$dm_tracktime<-as.double(as.POSIXlt(substr(all_weight$Date, 6,10),
-                                           format = "%m-%d"))
-#days since origin but without YEAR
-#faster in lubridate (day, month etc) but dont have library grr
+#each ck - do adults feed in exponential growth and lose mass then replenish themselves?
+p<-ggplot(all_weight[all_weight$Year==2015,], aes(x=as.factor(Date), y=Weight, colour=NestID))
+p+geom_line()
 
 library(dplyr)
 
@@ -76,10 +79,10 @@ weight_mn<-summarise(group_by(all_weight, Date), mean_weight=median(Weight, na.r
 #mean or median??
 weight_mn$year=substr(weight_mn$Date,1,4)
 
-weight_mn$d_m<-as.Date(paste(day(weight_mn$Date),"-", month(weight_mn$Date), sep=""), format="%d-%m")
+weight_mn$Month<-as.Date(paste(day(weight_mn$Date),"-", month(weight_mn$Date), sep=""), format="%d-%m")
 
-p<-ggplot(data=weight_mn, aes(y=mean_weight, x=d_m, colour=year))
-p+geom_line()
+p<-ggplot(data=weight_mn, aes(y=mean_weight, x=Month, colour=year))
+p+geom_line(size=1.5)+xlab(size=2)
 
 
 
