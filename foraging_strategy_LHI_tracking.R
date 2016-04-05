@@ -1,21 +1,29 @@
+rm(list=ls())
 
 library(maps)
 library(mapdata)
 library(lubridate)
 
-setwd("C:/research/phd/analyses/foraging_strategy")
+setwd("~/grive/phd/analyses/foraging_strategy")
 
-gps_2015<-read.csv("C:/research/phd/fieldwork/LHI_Feb_2015/data/tracking_results/compiled_tracking_data.csv",
+gps_2016<-read.csv("~/grive/phd/fieldwork/LHI_Feb_2016/data/tracking_data/compiled_tracking_data.csv",
                    h=T, strip.white=T)
 
-gps_2014<-read.csv("C:/research/phd/fieldwork/LHI_Mar_2014/data/tracking_results/compiled_tracking_data.csv",
+gps_2015<-read.csv("~/grive/phd/fieldwork/LHI_Feb_2015/data/tracking_results/compiled_tracking_data.csv",
                    h=T, strip.white=T)
 
-gps_dat<-rbind(gps_2014, gps_2015)
+gps_2014<-read.csv("~/grive/phd/fieldwork/LHI_Mar_2014/data/tracking_results/compiled_tracking_data.csv",
+                   h=T, strip.white=T)
+
+gps_2016$datetime<-NULL
+gps_dat<-rbind(gps_2014, gps_2015, gps_2016)
 
 head(gps_dat)
  
-gps_dat$DateTime<-as.POSIXlt(paste(gps_dat$Date, gps_dat$Time), format = "%Y/%m/%d %H:%M:%S")
+gps_dat$DateTime<-as.POSIXlt(paste(gps_dat$Date, gps_dat$Time, tz="AEST"), format = "%Y/%m/%d %H:%M:%S")
+
+#!!!! FROM NOW ALL TZ WILL BE SET TO AEST, CHECK FUNCTION SETTINGS!!!
+
 gps_dat$TrackTime <- as.double(gps_dat$DateTime)
 
 gps_dat$day<-day(gps_dat$DateTime)
@@ -30,7 +38,7 @@ map("worldHires", add=T,  col=3)
 
 #speed filter and resample
 
-source("D:/research/seabird_analyses/Heron_Island/heron_analyses_r_GPS/Velocity_Functions.r")
+source("~/research/seabird_analyses/Heron_Island/heron_analyses_r_GPS/Velocity_Functions.r")
 
 datout <- NULL
 for(i in unique(gps_dat$TrackID))
@@ -49,16 +57,16 @@ for(i in unique(gps_dat$TrackID))
   #readline("OK")
 }
 
-###@@@ removing points going with speeds over 75 km/h @@@###
-#datout<-datout[datout$Vel<75,]
-#datout<-na.omit(datout)
+#removing points going with speeds over 75 km/h 
+datout<-datout[datout$Vel<75,]
+datout<-na.omit(datout)
 
-#NOT removing high speeds, max vel= 97 km/h. Could be realistic, had 35 knot winds smashing the area for the duration of biologging
 
 ####@@@@ RESAMPLE @@@@####
 
-  source("D:/research/seabird_analyses/Heron_Island/heron_analyses_r_GPS/Resample.r")
-  
+  source("~/research/seabird_analyses/Heron_Island/heron_analyses_r_GPS/Resample.r")
+## set up to not interpolate between points > 1 hr apart
+
   trackz<-unique(datout$TrackID)
   
   resamp<-NULL
@@ -68,8 +76,8 @@ for(i in unique(gps_dat$TrackID))
   
   resample_output<-resample(Track, timeStep=(0.1666667))  ## timeStep set for 10 min intervals
   
-  resample_output$Date <- format(as.Date(as.POSIXlt(resample_output$TrackTime, origin="1970-01-01")), format="%Y/%m/%d")
-  resample_output$Time <- format((as.POSIXlt(resample_output$TrackTime, origin="1970-01-01")), "%H:%M:%S")
+  resample_output$Date_resamp <- format(as.Date(as.POSIXlt(resample_output$TrackTime, origin="1970-01-01")), format="%Y/%m/%d")
+  resample_output$Time_resamp <- format((as.POSIXlt(resample_output$TrackTime, origin="1970-01-01")), "%H:%M:%S")
   
   resamp<-rbind(resamp, resample_output)
   }
