@@ -82,6 +82,8 @@ datout<-na.omit(datout)
   resamp<-rbind(resamp, resample_output)
   }
 
+write.csv(resamp, "LHI_gps_14_15_16.csv", quote=F, row.names=F)  
+  
 datout<-resamp
 
 plot(Latitude~Longitude, datout, pch=16, cex=0.4, col=factor(TrackID))
@@ -99,7 +101,7 @@ signal_point<-data.frame(Latitude=-31.524732, Longitude=159.059787)
 
 
 #### Trip split ####
-source("D:/research/seabird_analyses/Complete March/TripSplit.r")
+source("~/grive/phd/scripts/MIBA_scripts_revised/TripSplit_revised.r")
 
 birds <-unique(datout$TrackID)
 datout$ID<-datout$TrackID
