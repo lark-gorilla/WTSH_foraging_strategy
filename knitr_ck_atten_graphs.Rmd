@@ -9,7 +9,7 @@ output: html_document
 
 library(ggplot2)
 library(scales)
-setwd("~/grive/phd/analyses/foraging_strategy")
+setwd("~/grive/phd/analyses/foraging_strategy/trial_plots")
 nest_comp<-read.csv("LHI_2015_ck_nest_atten.csv", h=T)
 
 nest_comp$Date<-as.Date(nest_comp$Date)
