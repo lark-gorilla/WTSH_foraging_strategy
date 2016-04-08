@@ -153,9 +153,8 @@ write.csv(trip_lens, "trip_lengths_from_gps.csv", quote=F, row.names=F)
 # Add in the actual return dates of missing trips manually, then read back in
 t_len_corr<-read.csv("trip_lengths_from_gps_act_return.csv", h=T) 
 
-t_len_corr$DateTime<-as.POSIXlt(t_len_corr$st_dt, format = "%d/%m/%Y %H:%M")
+t_len_corr$DateTime<-as.POSIXlt(t_len_corr$st_dt, format = "%Y-%m-%d %H:%M:%S")
 t_len_corr$st_tt <- as.double(t_len_corr$DateTime)
-
 
 t_len_corr$DateTime_nd<-as.POSIXlt(t_len_corr$Actual_return, format = "%d/%m/%Y %H:%M")
 t_len_corr$nd_tt <- as.double(t_len_corr$DateTime_nd)
@@ -165,7 +164,15 @@ t_len_corr$trip_len2<-((t_len_corr$nd_tt-t_len_corr$st_tt)/3600)/24
 t_len_corr[which(is.na(t_len_corr$trip_len2)),]$trip_len2<-
   t_len_corr[which(is.na(t_len_corr$trip_len2)),]$trip_len
 
-qplot(data=t_len_corr, x=trip_len2, geom="histogram")
+t_len_corr$day<-day(t_len_corr$DateTime)
+t_len_corr$month<-month(t_len_corr$DateTime)
+t_len_corr$year<-year(t_len_corr$DateTime)
+
+ggplot(data=t_len_corr, aes(x=trip_len2))+geom_histogram()+facet_grid(~year)
+
+#these plots could be cleaned up more: start time doesnt always reflect when bird left colony (some 
+#loggers starting while bird is at sea) and there is defo an overestimate on the length of some
+# return=N trips as birds evaded before retrieving the logger.
 
 ## plots for when birds are on colony/foraging to improve attendence data
 
