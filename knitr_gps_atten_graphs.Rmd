@@ -9,6 +9,7 @@ output: html_document
 
 library(ggplot2)
 library(scales)
+library(directlabels)
 setwd("~/grive/phd/analyses/foraging_strategy")
 trip_dat<-read.csv("LHI_gps_14_15_16_interp_tripsplit.csv", h=T)
 
@@ -17,14 +18,19 @@ trip_dat$DateTime<-as.POSIXlt(trip_dat$DateTime, format = "%Y-%m-%d %H:%M:%S")
 for(i in unique(trip_dat$TrackID))
 { 
 td1<-trip_dat[trip_dat$TrackID==i,]
+td1$labz<-as.character(td1$DateTime)
     
 colony_breaks<-c(min(which(trip_dat[trip_dat$TrackID==i,]$trip_id==-1)),    which(trip_dat[trip_dat$TrackID==i,]$trip_id==-1)[which(diff(which(trip_dat[trip_dat$TrackID==i,]$trip_id==-1))>1)],
                  which(trip_dat[trip_dat$TrackID==i,]$trip_id==-1)[which(diff(which(trip_dat[trip_dat$TrackID==i,]$trip_id==-1))>1)+1],
                  max(which(trip_dat[trip_dat$TrackID==i,]$trip_id==-1)))
 
+labelling_df<-data.frame(DateTime=td1[colony_breaks,]$DateTime,
+labz=as.character(td1[colony_breaks,]$DateTime),
+ColDist=rep(max(td1$ColDist)/2, length(colony_breaks)), trip_id=1)
 
 print(  
-ggplot(data=td1, aes(y=ColDist, x=DateTime, colour=trip_id)) + geom_line() + geom_point()+ geom_vline(xintercept=as.numeric(td1[colony_breaks,]$DateTime))
+
+ggplot(data=td1, aes(y=ColDist, x=DateTime)) + geom_line(aes(colour=trip_id)) + geom_point(aes(colour=trip_id))+ geom_vline(xintercept=as.numeric(td1[colony_breaks,]$DateTime), colour="light grey")+ geom_dl(data=labelling_df, aes(label=labz), method=list("last.points", rot=90))+
 ggtitle(paste("Track", i))
 )
 readline("")
