@@ -5,6 +5,115 @@ library(lubridate)
 
 setwd("~/grive/phd/analyses/foraging_strategy")
 
+###############################################################################################
+##### THIS SCRIPT COMPILES ATTENDENCE DATA AND CLEANS IT BY PULLING CONCURRENT CHICK DATA #####
+##### AND COMBINING THE TWO TO RESOLVE WHETHER CHICKS WERE FED OR NOT, AND IF SO WHICH    #####
+##### ADULT BIRD DID THE FEEDING                                                          #####
+###############################################################################################
+
+# FIRST SECTION OF SCRIPT IS FOR 2016 DATA
+
+atten<-read_excel("~/grive/phd/fieldwork/LHI_Feb_2016/data/Adult_attendence_2016.xlsx", 1 ,
+                  skip=0, col_names=T)
+
+m1<-as.matrix(atten)
+dimnames(m1)[[1]]<-m1[,1]
+m1<-m1[,-1]
+
+weight<-read_excel("~/grive/phd/fieldwork/LHI_Feb_2016/data/Chick_data_2016.xlsx", 1 ,
+                   skip=2, col_names=T)
+weight<-data.matrix(weight) # data.matrix converts into numeric matrix
+
+gg_feed<-NULL
+for (i in 3:max(which(colSums(weight[,2:40], na.rm=T)>0))) # weight changes run from the 18th of Feb
+{
+  d1<-data.frame(weight=weight[,i], diff=weight[,i]-weight[,(i-1)], Date=dimnames(weight)[[2]][i], NestID=weight[,1])
+  gg_feed<-rbind(gg_feed, d1)
+}
+
+gg_feed$Date<-as.Date(as.numeric(as.character(gg_feed$Date)), origin="1899-12-30")
+
+gg_feed$Chick<-as.factor(sapply(gg_feed$diff, FUN=function(x) (if(is.na(x)) {x="NA"}else{if(x>=0){"Fed"}else{"Not fed"}})))
+## have set to weight diff = 0 then is 'fed' ie hasnt lost mass in 24 hr, althou for starving chicks this could be flatlining
+
+
+### initially just for ck1
+
+
+ck1<-cbind(gg_feed[gg_feed$NestID==1,],
+           LW=m1[which(dimnames(m1)[[1]]=="1 LW"), which(dimnames(m1)[[2]]=="Feb_05") : which(dimnames(m1)[[2]]=="Mar_12")],
+           RW=m1[which(dimnames(m1)[[1]]=="1 RW"), which(dimnames(m1)[[2]]=="Feb_05") : which(dimnames(m1)[[2]]=="Mar_12")])
+
+## ck weights run from 05 Feb - 13 Mar, we select attendance data from 05 Feb - 12 Mar as feed would occur night before
+
+
+
+ggplot(data=ck1, aes(y=weight, x=Date))+
+  geom_line()+geom_point(aes(x=Date, y=diff)) + 
+  geom_line(aes(x=Date, y=as.numeric(LW)*100), colour="green")+
+  geom_line(aes(x=Date, y=as.numeric(RW)*100), colour="red")
+
+## Reasons to remove nest/pairs from analyses: never figured what was going on i.e. 3 parents?
+## Some chicks died early and parents abandoned
+
+atten_pairs<-dimnames(m1)[[1]] # get attendence data nests
+atten_pairs<-atten_pairs[-grep("12", atten_pairs)] #get rid nest 12
+atten_pairs<-atten_pairs[-grep("54", atten_pairs)] #get rid nest 54
+
+atten_nests<-1
+for(j in 3:66){atten_nests<-c(atten_nests, strsplit(atten_pairs, " ")[[j]][1])} # discustingly inelegant
+atten_nests<-as.numeric(unique(atten_nests))
+
+## Now compile ck weights and adult attendence for these nests.
+
+nest_comp<-NULL
+for(j in atten_nests)
+{
+  nestX<-cbind(gg_feed[gg_feed$NestID==j,],
+               LW=m1[which(dimnames(m1)[[1]]==paste(j, "LW")), which(dimnames(m1)[[2]]=="Feb_17") : which(dimnames(m1)[[2]]=="Apr_10")],
+               RW=m1[which(dimnames(m1)[[1]]==paste(j, "RW")), which(dimnames(m1)[[2]]=="Feb_17") : which(dimnames(m1)[[2]]=="Apr_10")])
+  
+  nest_comp<-rbind(nest_comp, nestX)
+}
+
+# remember attendence data is shifted forward 1 day to match the corresponding chick weight.
+
+write.csv(nest_comp, "LHI_2015_nest_weights_attendance.csv", row.names=F, quote=F)
+
+## does appear like we are overly harrassing the tracked/attendenc birds
+gg_feed$harrass<-"no"
+gg_feed[gg_feed$NestID %in% nest_comp$NestID,]$harrass<-"yes"
+ggplot(data=gg_feed, aes(y=weight, x=Date, group=Date)) + geom_boxplot() +facet_wrap(~harrass)
+
+###### next stage of data cleaning ######
+
+nest_comp$LW_corr<-nest_comp$LW
+nest_comp$RW_corr<-nest_comp$RW
+
+nest_comp[nest_comp$LW=="D",]
+
+nest_comp[nest_comp$LW=="D" & nest_comp$Chick=="Not fed",]$LW_corr<-"A"
+nest_comp[nest_comp$LW=="D" & nest_comp$Chick=="Not fed",]$RW_corr<-"A"
+
+nest_comp[nest_comp$LW_corr=="D" & nest_comp$diff==0,]
+
+weight[weight$NestID==24,] ## correct for nest 24
+
+nest_comp[nest_comp$LW_corr=="D" &  nest_comp$diff==0 & nest_comp$NestID==24,]$LW_corr<-"A"
+nest_comp[nest_comp$LW_corr=="D" &  nest_comp$diff==0 & nest_comp$NestID==24,]$RW_corr<-"A"
+
+nest_comp[nest_comp$Date==nest_comp$Date[39],] #for the date we went to the golfy and didnt sample
+
+nest_comp[nest_comp$Date==nest_comp$Date[39],]$LW_corr<-"D"
+nest_comp[nest_comp$Date==nest_comp$Date[39],]$RW_corr<-"D"
+
+nest_comp[nest_comp$Date==nest_comp$Date[39]& nest_comp$Chick=="Not fed",]$LW_corr<-"A"
+nest_comp[nest_comp$Date==nest_comp$Date[39]& nest_comp$Chick=="Not fed",]$RW_corr<-"A"
+
+# writing out nest_comp
+write.csv(nest_comp, "LHI_2015_nest_weights_attendance_cleaned.csv", row.names=F, quote=F)
+
+###### 2015 ATTENDENCE CLEANING BELOW, JUST A CLONE SCRIPT OF THE 2016 ABOVE ######
 
 atten<-read_excel("~/grive/phd/fieldwork/LHI_Feb_2015/data/Adult_attendence_2015.xlsx", 1 ,
                   skip=0, col_names=T)
@@ -155,79 +264,5 @@ meal_mod_dat$tree_pred<-predict(t1, meal_mod_dat)
 
 m1<-glm(Feeder~Meal_size, data=meal_mod_dat, family=binomial)
 
-######
-## compare multiple years of ck weight
-
-library(reshape2)
-
-weight_2004<-read.csv("~/grive/phd/sourced_data/IH_DP_moonphase/IH_DP_ck_weight_feb_may_04.csv", h=T)
-
-weight_2004<-weight_2004[weight_2004$AM_PM=="PM",] # select only PM weights, comparable with other yrs
-weight_2004$AM_PM<-NULL
-
-weight_2004<-melt(weight_2004, value.name="weight", id=1)
-names(weight_2004)[2]<-"NestID"
-
-weight_2014<-read_excel("~/grive/phd/fieldwork/LHI_Mar_2014/data/Chick_data_2014.xlsx", 1 ,
-                        skip=2, col_names=T, col_types=rep("numeric", 21)) #"DEAD" is converted NA
-
-weight_2014<-melt(weight_2014, value.name="weight", id=1)
-names(weight_2014)[2]<-"Date"
-
-weight_2014$Date<-as.Date(as.numeric(as.character(weight_2014$Date)), origin = "1899-12-30") # origin dumb on MS Excel
-
-weight_2015<-read_excel("~/grive/phd/fieldwork/LHI_Feb_2015/data/Chick_data_2015.xlsx", 1 ,
-                   skip=2, col_names=T, col_types=c("character", rep("numeric", 59)))
-
-weight_2015<-melt(weight_2015, value.name="weight", id=1)
-names(weight_2015)[2]<-"Date"
-
-#standardize and bind together
-
-weight_2004<-weight_2004[, c(2,1,3)] #reorder columns
-
-weight_2004$NestID<-as.character(weight_2004$NestID)
-weight_2014$NestID<-as.character(weight_2014$NestID)
-weight_2015$NestID<-as.character(weight_2015$NestID)
-
-weight_2004$Date<-dmy(weight_2004$Date)
-weight_2014$Date<-ymd(as.Date(as.numeric(as.character(weight_2014$Date)), origin = "1899-12-30"))
-weight_2015$Date<-dmy(weight_2015$Date)
-
-weight_yrs<-rbind(weight_2004, weight_2014, weight_2015)
-weight_yrs$Year<-year(weight_yrs$Date)
-weight_yrs<-weight_yrs[order(weight_yrs$Date),]
-
-weight_yrs$diff<-NA
-weight_yrs$temp_id<-paste(weight_yrs$Year, weight_yrs$NestID, sep="_")
-
-for (i in unique(weight_yrs$temp_id))
-{
-  for(j in 2:nrow(weight_yrs[weight_yrs$temp_id==i,]))
-  {
-    weight_yrs[weight_yrs$temp_id==i,]$diff[j]<-
-      weight_yrs[weight_yrs$temp_id==i,]$weight[j]-weight_yrs[weight_yrs$temp_id==i,]$weight[(j-1)]
-  }   
-}
-
-weight_yrs$temp_id<-NULL
-
-weight_yrs$Feed<-as.factor(sapply(weight_yrs$diff, FUN=function(x) (if(is.na(x)) {x="NA"}else{if(x>=0){"Fed"}else{"Not fed"}})))
-
-#
-
-
-p<-ggplot(data=weight_yrs[weight_yrs$year!="2014",], aes(y=weight, x=as.Date(Date, format="%d/%m"),
-                                                         group=Date, colour=year))
-p+geom_boxplot()
-
-library(dplyr)
-
-weight_mn<-summarise(group_by(weight_yrs, Date), mean_weight=mean(weight, na.rm=T))
-
-weight_mn$year=substr(weight_mn$Date,7,10)
-
-p<-ggplot(data=weight_mn, aes(y=mean_weight, x=as.Date(Date, format="%d/%m"), colour=year))
-p+geom_line()
 
 
