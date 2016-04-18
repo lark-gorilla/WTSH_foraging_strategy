@@ -47,7 +47,6 @@ ck1<-cbind(gg_feed[gg_feed$NestID==1,],
 ## ck weights run from 05 Feb - 13 Mar, we select attendance data from 05 Feb - 12 Mar as feed would occur night before
 
 
-
 ggplot(data=ck1, aes(y=weight, x=Date))+
   geom_line()+geom_point(aes(x=Date, y=diff)) + 
   geom_line(aes(x=Date, y=as.numeric(LW)*100), colour="green")+
@@ -57,11 +56,11 @@ ggplot(data=ck1, aes(y=weight, x=Date))+
 ## Some chicks died early and parents abandoned
 
 atten_pairs<-dimnames(m1)[[1]] # get attendence data nests
-atten_pairs<-atten_pairs[-grep("12", atten_pairs)] #get rid nest 12
-atten_pairs<-atten_pairs[-grep("54", atten_pairs)] #get rid nest 54
+atten_pairs<-atten_pairs[-grep("25", atten_pairs)] #get rid nest 25
+atten_pairs<-atten_pairs[-grep("27", atten_pairs)] #get rid nest 27
 
 atten_nests<-1
-for(j in 3:66){atten_nests<-c(atten_nests, strsplit(atten_pairs, " ")[[j]][1])} # discustingly inelegant
+for(j in 1:length(atten_pairs)){atten_nests<-c(atten_nests, strsplit(atten_pairs, " ")[[j]][1])} # disgustingly inelegant
 atten_nests<-as.numeric(unique(atten_nests))
 
 ## Now compile ck weights and adult attendence for these nests.
@@ -70,20 +69,31 @@ nest_comp<-NULL
 for(j in atten_nests)
 {
   nestX<-cbind(gg_feed[gg_feed$NestID==j,],
-               LW=m1[which(dimnames(m1)[[1]]==paste(j, "LW")), which(dimnames(m1)[[2]]=="Feb_17") : which(dimnames(m1)[[2]]=="Apr_10")],
-               RW=m1[which(dimnames(m1)[[1]]==paste(j, "RW")), which(dimnames(m1)[[2]]=="Feb_17") : which(dimnames(m1)[[2]]=="Apr_10")])
+               LW=m1[which(dimnames(m1)[[1]]==paste(j, "LW")), which(dimnames(m1)[[2]]=="Feb_05") : which(dimnames(m1)[[2]]=="Mar_12")],
+               RW=m1[which(dimnames(m1)[[1]]==paste(j, "RW")), which(dimnames(m1)[[2]]=="Feb_05") : which(dimnames(m1)[[2]]=="Mar_12")])
   
   nest_comp<-rbind(nest_comp, nestX)
 }
 
 # remember attendence data is shifted forward 1 day to match the corresponding chick weight.
 
-write.csv(nest_comp, "LHI_2015_nest_weights_attendance.csv", row.names=F, quote=F)
+write.csv(nest_comp, "LHI_2016_nest_weights_attendance.csv", row.names=F, quote=F)
 
-## does appear like we are overly harrassing the tracked/attendenc birds
+## does appear like we are overly harrassing the tracked/attendenc birds :()
 gg_feed$harrass<-"no"
 gg_feed[gg_feed$NestID %in% nest_comp$NestID,]$harrass<-"yes"
 ggplot(data=gg_feed, aes(y=weight, x=Date, group=Date)) + geom_boxplot() +facet_wrap(~harrass)
+
+# doesnt look as bad
+library(dplyr)
+gg_feed$fed_bin=0
+gg_feed[gg_feed$Chick=="Fed",]$fed_bin<-1
+fed_sum<-summarise(group_by(gg_feed, NestID), num_feeds=sum(fed_bin), harrass=unique(harrass))
+
+fair_fed<-rbind(fed_sum[sample(which(fed_sum$harrass=="yes"), 13, replace=FALSE),],
+                fed_sum[which(fed_sum$harrass=="no"),])
+
+ggplot(data=fair_fed, aes(x=num_feeds, colour=harrass)) + geom_histogram() +facet_wrap(~harrass)
 
 ###### next stage of data cleaning ######
 
@@ -97,21 +107,9 @@ nest_comp[nest_comp$LW=="D" & nest_comp$Chick=="Not fed",]$RW_corr<-"A"
 
 nest_comp[nest_comp$LW_corr=="D" & nest_comp$diff==0,]
 
-weight[weight$NestID==24,] ## correct for nest 24
-
-nest_comp[nest_comp$LW_corr=="D" &  nest_comp$diff==0 & nest_comp$NestID==24,]$LW_corr<-"A"
-nest_comp[nest_comp$LW_corr=="D" &  nest_comp$diff==0 & nest_comp$NestID==24,]$RW_corr<-"A"
-
-nest_comp[nest_comp$Date==nest_comp$Date[39],] #for the date we went to the golfy and didnt sample
-
-nest_comp[nest_comp$Date==nest_comp$Date[39],]$LW_corr<-"D"
-nest_comp[nest_comp$Date==nest_comp$Date[39],]$RW_corr<-"D"
-
-nest_comp[nest_comp$Date==nest_comp$Date[39]& nest_comp$Chick=="Not fed",]$LW_corr<-"A"
-nest_comp[nest_comp$Date==nest_comp$Date[39]& nest_comp$Chick=="Not fed",]$RW_corr<-"A"
 
 # writing out nest_comp
-write.csv(nest_comp, "LHI_2015_nest_weights_attendance_cleaned.csv", row.names=F, quote=F)
+write.csv(nest_comp, "LHI_2016_nest_weights_attendance_cleaned.csv", row.names=F, quote=F)
 
 ###### 2015 ATTENDENCE CLEANING BELOW, JUST A CLONE SCRIPT OF THE 2016 ABOVE ######
 
