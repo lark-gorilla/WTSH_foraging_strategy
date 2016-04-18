@@ -107,6 +107,16 @@ nest_comp[nest_comp$LW=="D" & nest_comp$Chick=="Not fed",]$RW_corr<-"A"
 
 nest_comp[nest_comp$LW_corr=="D" & nest_comp$diff==0,]
 
+# correcting 9th Feb no data gap
+
+nest_comp[nest_comp$Date=="2016-02-09" & nest_comp$Chick=="Fed"
+          & nest_comp$LW_corr!="B",]$LW_corr<-"D"
+nest_comp[nest_comp$Date=="2016-02-09" & nest_comp$Chick=="Fed"
+          & nest_comp$LW_corr!="B",]$RW_corr<-"D"
+
+nest_comp[nest_comp$Date=="2016-02-09" & nest_comp$Chick=="Not fed",]$LW_corr<-"A"
+nest_comp[nest_comp$Date=="2016-02-09" & nest_comp$Chick=="Not fed",]$RW_corr<-"A"
+
 
 # writing out nest_comp
 write.csv(nest_comp, "LHI_2016_nest_weights_attendance_cleaned.csv", row.names=F, quote=F)
