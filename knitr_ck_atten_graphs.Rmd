@@ -1,7 +1,7 @@
 ---
-title: "LHI_2015_chick_atten_graphs"
+title: "LHI_2016_chick_atten_graphs"
 author: "MGR"
-date: "14/09/2015"
+date: "20/04/2016"
 output: html_document
 ---
 
@@ -10,7 +10,8 @@ output: html_document
 library(ggplot2)
 library(scales)
 setwd("~/grive/phd/analyses/foraging_strategy")
-nest_comp<-read.csv("LHI_2015_nest_weights_attendance_cleaned.csv", h=T)
+#nest_comp<-read.csv("LHI_2015_nest_weights_attendance_cleaned.csv", h=T)
+nest_comp<-read.csv("LHI_2016_nest_weights_attendance_cleaned.csv", h=T)
 
 nest_comp$Date<-as.Date(nest_comp$Date)
 
