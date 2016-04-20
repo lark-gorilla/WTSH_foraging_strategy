@@ -2,9 +2,22 @@ rm(list=ls())
 library(ggplot2)
 library(lubridate)
 
-setwd("D:/research/phd/analyses/foraging_strategy")
+setwd("~/grive/phd/analyses/foraging_strategy")
 
-# NEST COMP RECEIVED SOME MANUAL CLEANING IN CALC NAs in ck weight section changed to 0s
+# !!!2016!!! NEST COMP RECEIVED SOME MANUAL CLEANING IN CALC NAs in ck weight section changed to 0s
+nest_comp<-read.csv("LHI_2016_nest_weights_attendance_cleaned.csv", h=T, strip.white=T)
+nest_comp$Date<-ymd(nest_comp$Date)
+nest_comp$LW_assn<-nest_comp$LW_corr
+nest_comp$RW_assn<-nest_comp$RW_corr
+
+nest_comp<-nest_comp[nest_comp$NestID!=10,]
+nest_comp<-nest_comp[nest_comp$NestID!=19,]
+nest_comp<-nest_comp[nest_comp$NestID!=23,]
+nest_comp<-nest_comp[nest_comp$NestID!=36,]
+nest_comp<-nest_comp[nest_comp$NestID!=40,]
+# first stab at removing bad nests, could remove more
+
+# !!!2015!!! NEST COMP RECEIVED SOME MANUAL CLEANING IN CALC NAs in ck weight section changed to 0s
 nest_comp<-read.csv("LHI_2015_nest_weights_attendance_cleaned.csv", h=T, strip.white=T)
 nest_comp$Date<-ymd(nest_comp$Date)
 
@@ -54,8 +67,8 @@ fun_single<-function(x)
 
 ### Parameters
 
-D1="2015-02-18"
-D2="2015-04-11" 
+D1="2016-02-05"
+D2="2016-03-12" 
 longallow=FALSE
 feed_fun=fun_single
 
