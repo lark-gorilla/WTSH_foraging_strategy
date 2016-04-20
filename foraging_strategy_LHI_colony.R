@@ -41,10 +41,10 @@ gg_feed$Chick<-as.factor(sapply(gg_feed$diff, FUN=function(x) (if(is.na(x)) {x="
 
 
 ck1<-cbind(gg_feed[gg_feed$NestID==1,],
-           LW=m1[which(dimnames(m1)[[1]]=="1 LW"), which(dimnames(m1)[[2]]=="Feb_05") : which(dimnames(m1)[[2]]=="Mar_12")],
-           RW=m1[which(dimnames(m1)[[1]]=="1 RW"), which(dimnames(m1)[[2]]=="Feb_05") : which(dimnames(m1)[[2]]=="Mar_12")])
+           LW=m1[which(dimnames(m1)[[1]]=="1 LW"), which(dimnames(m1)[[2]]=="Feb_04") : which(dimnames(m1)[[2]]=="Mar_11")],
+           RW=m1[which(dimnames(m1)[[1]]=="1 RW"), which(dimnames(m1)[[2]]=="Feb_04") : which(dimnames(m1)[[2]]=="Mar_11")])
 
-## ck weights run from 05 Feb - 13 Mar, we select attendance data from 05 Feb - 12 Mar as feed would occur night before
+## ck weights run from 05 Feb - 12 Mar, we select attendance data from 04 Feb - 11 Mar as feed would occur night before
 
 
 ggplot(data=ck1, aes(y=weight, x=Date))+
@@ -69,8 +69,8 @@ nest_comp<-NULL
 for(j in atten_nests)
 {
   nestX<-cbind(gg_feed[gg_feed$NestID==j,],
-               LW=m1[which(dimnames(m1)[[1]]==paste(j, "LW")), which(dimnames(m1)[[2]]=="Feb_05") : which(dimnames(m1)[[2]]=="Mar_12")],
-               RW=m1[which(dimnames(m1)[[1]]==paste(j, "RW")), which(dimnames(m1)[[2]]=="Feb_05") : which(dimnames(m1)[[2]]=="Mar_12")])
+               LW=m1[which(dimnames(m1)[[1]]==paste(j, "LW")), which(dimnames(m1)[[2]]=="Feb_04") : which(dimnames(m1)[[2]]=="Mar_11")],
+               RW=m1[which(dimnames(m1)[[1]]==paste(j, "RW")), which(dimnames(m1)[[2]]=="Feb_04") : which(dimnames(m1)[[2]]=="Mar_11")])
   
   nest_comp<-rbind(nest_comp, nestX)
 }
@@ -83,6 +83,12 @@ write.csv(nest_comp, "LHI_2016_nest_weights_attendance.csv", row.names=F, quote=
 gg_feed$harrass<-"no"
 gg_feed[gg_feed$NestID %in% nest_comp$NestID,]$harrass<-"yes"
 ggplot(data=gg_feed, aes(y=weight, x=Date, group=Date)) + geom_boxplot() +facet_wrap(~harrass)
+
+fair_fed_IDs<-c(sample(unique(gg_feed[gg_feed$harrass=="yes",]$NestID), 13), 
+                unique(gg_feed[gg_feed$harrass=="no",]$NestID))
+
+ggplot(data=gg_feed[gg_feed$NestID %in% fair_fed_IDs,], aes(y=weight, x=Date, group=Date)) +
+  geom_boxplot() +facet_wrap(~harrass)
 
 # doesnt look as bad
 library(dplyr)
@@ -107,15 +113,15 @@ nest_comp[nest_comp$LW=="D" & nest_comp$Chick=="Not fed",]$RW_corr<-"A"
 
 nest_comp[nest_comp$LW_corr=="D" & nest_comp$diff==0,]
 
-# correcting 9th Feb no data gap
+# correcting 9th Feb no data gap, which cos we have shifted
 
-nest_comp[nest_comp$Date=="2016-02-09" & nest_comp$Chick=="Fed"
+nest_comp[nest_comp$Date=="2016-02-10" & nest_comp$Chick=="Fed"
           & nest_comp$LW_corr!="B",]$LW_corr<-"D"
-nest_comp[nest_comp$Date=="2016-02-09" & nest_comp$Chick=="Fed"
+nest_comp[nest_comp$Date=="2016-02-10" & nest_comp$Chick=="Fed"
           & nest_comp$LW_corr!="B",]$RW_corr<-"D"
 
-nest_comp[nest_comp$Date=="2016-02-09" & nest_comp$Chick=="Not fed",]$LW_corr<-"A"
-nest_comp[nest_comp$Date=="2016-02-09" & nest_comp$Chick=="Not fed",]$RW_corr<-"A"
+nest_comp[nest_comp$Date=="2016-02-10" & nest_comp$Chick=="Not fed",]$LW_corr<-"A"
+nest_comp[nest_comp$Date=="2016-02-10" & nest_comp$Chick=="Not fed",]$RW_corr<-"A"
 
 
 # writing out nest_comp
