@@ -123,7 +123,23 @@ nest_comp[nest_comp$Date=="2016-02-10" & nest_comp$Chick=="Fed"
 nest_comp[nest_comp$Date=="2016-02-10" & nest_comp$Chick=="Not fed",]$LW_corr<-"A"
 nest_comp[nest_comp$Date=="2016-02-10" & nest_comp$Chick=="Not fed",]$RW_corr<-"A"
 
+# Use random assign for LW/RW on 'D' nights
 
+nest_comp$LW_assn<-nest_comp$LW_corr
+nest_comp$RW_assn<-nest_comp$RW_corr
+
+fun_single<-function(x) 
+{ 
+  LWO<-sample(c("B", "A"),1,)
+  if(LWO=="B"){RWO<-"A"}else{RWO<-"B"}
+  
+  return(c(LWO, RWO))}
+
+  out<-lapply(nest_comp[nest_comp$LW_corr=="D",]$diff, FUN=fun_single)  
+  
+  nest_comp[nest_comp$LW_corr=="D",]$LW_assn<-unlist(out)[seq(1,(length(unlist(out))-1),2)]
+  nest_comp[nest_comp$LW_corr=="D",]$RW_assn<-unlist(out)[seq(2,length(unlist(out)),2)]
+  
 # writing out nest_comp
 write.csv(nest_comp, "LHI_2016_nest_weights_attendance_cleaned.csv", row.names=F, quote=F)
 
