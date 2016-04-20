@@ -9,8 +9,8 @@ output: html_document
 
 library(ggplot2)
 library(scales)
-setwd("~/grive/phd/analyses/foraging_strategy/trial_plots")
-nest_comp<-read.csv("LHI_2015_ck_nest_atten.csv", h=T)
+setwd("~/grive/phd/analyses/foraging_strategy")
+nest_comp<-read.csv("LHI_2015_nest_weights_attendance_cleaned.csv", h=T)
 
 nest_comp$Date<-as.Date(nest_comp$Date)
 
@@ -21,7 +21,7 @@ ggplot(data=nest_comp[nest_comp$NestID==i,], aes(y=weight, x=Date)) + geom_line(
 geom_line(aes(x=Date, y=as.numeric(LW_assn)*100), colour="green")+
 geom_line(aes(x=Date, y=as.numeric(RW_assn)*100), colour="red", linetype=2)+
 geom_point(data=nest_comp[nest_comp$NestID==i & nest_comp$LW_corr=="D",], aes(x=Date, y=200), colour="blue")+
-ggtitle(paste("Nest", i))+scale_x_date(breaks = "1 week")
+ggtitle(paste("Nest", i))+scale_x_date(date_breaks = "1 week")
 )
 }
 
