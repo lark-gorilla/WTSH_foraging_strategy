@@ -7,8 +7,7 @@ setwd("~/grive/phd/analyses/foraging_strategy")
 # !!!2016!!! NEST COMP RECEIVED SOME MANUAL CLEANING IN CALC NAs in ck weight section changed to 0s
 nest_comp<-read.csv("LHI_2016_nest_weights_attendance_cleaned.csv", h=T, strip.white=T)
 nest_comp$Date<-ymd(nest_comp$Date)
-nest_comp$LW_assn<-nest_comp$LW_corr
-nest_comp$RW_assn<-nest_comp$RW_corr
+
 
 nest_comp<-nest_comp[nest_comp$NestID!=10,]
 nest_comp<-nest_comp[nest_comp$NestID!=19,]
@@ -234,7 +233,7 @@ pp+geom_bar(stat="identity", fill="dark grey", colour="black")+
   scale_x_continuous(limits=c(0, limmy), breaks=seq(1,limmy))+
   theme_classic()+ylab("Mean time spent foraging (prop)")+xlab("Duration of foraging trip (days)")
 
-ggsave(paste("LHI15_foraging",D1, D2, "longallow", longallow, "feed_fun_SINGLE_BIGTAR.png", sep="_")) #change feed_fun manually!
+ggsave(paste("LHI16_foraging",D1, D2, "longallow", longallow, "feed_fun_SINGLE.png", sep="_")) #change feed_fun manually!
 
 #plot individual nests
 
