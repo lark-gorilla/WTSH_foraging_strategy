@@ -14,10 +14,9 @@ setwd("~/grive/phd/analyses/foraging_strategy")
 lhi_04<-read_excel("~/grive/phd/sourced_data/IH_DP_moonphase/WTSH 2004 Lord Howe_DP.xls", 1 ,
                   skip=0, col_names=T)
 
-lhi_04[lhi_04$NESTID==]
 
-lhi_04<-data.frame(NestID=lhi_04$Nest, DateTime=as.POSIXlt((lhi_04$'date/time')* 86400, origin="1899-12-30"),
-                   DateTime_hack=as.POSIXlt((lhi_04$'date/time'+0.5)* 86400, origin="1899-12-30"),
+lhi_04<-data.frame(NestID=lhi_04$Nest, DateTime=as.POSIXlt((lhi_04$'date/time')* 86400, origin="1899-12-30", tz="UTC"),
+                   DateTime_hack=as.POSIXlt((lhi_04$'date/time'+0.5)* 86400, origin="1899-12-30", tz="UTC"),
                    ck_weight=lhi_04$'chick wt (g)', ck_cul=lhi_04$'ch cul (mm)', ck_tar=lhi_04$'ch tarsus',
                    AdultID=lhi_04$'ad1 band #', Adult_weight=lhi_04$'ad1 wt (g)')
 
@@ -56,14 +55,68 @@ for (i in na.omit(unique(nest_comp$NestID)))
      nest_clean<-rbind(nest_clean, t1)
      
      print(i)
-     
     }
+
+nest_clean$AdultID<-NULL
+nest_clean<-na.omit(nest_clean)
+nest_clean$Date_hack<-as.Date(nest_clean$DateTime_hack)
+
+date_comp<-NULL
+for (i in unique(nest_clean$NestID))
+{
+  d1<-nest_clean[nest_clean$NestID==i,]
+  
+  d1_comp<-NULL
+  for(j in unique(d1$Date_hack))
+      {
+      d1_out<- d1[d1$Date_hack==j,][1,]
+      d1_out$LW_corr<-"A"
+      d1_out$RW_corr<-"A"
+      
+      if("D" %in% d1[d1$Date_hack==j,]$LW){d1_out$LW_corr<-"D"}
+      if("B" %in% d1[d1$Date_hack==j,]$LW){d1_out$LW_corr<-"B"}
+      
+      if("D" %in% d1[d1$Date_hack==j,]$RW){d1_out$RW_corr<-"D"}
+      if("B" %in% d1[d1$Date_hack==j,]$RW){d1_out$RW_corr<-"B"}
+      
+      d1_comp<-rbind(d1_comp, d1_out)
+      }
+
+  date_comp<-rbind(date_comp, d1_comp)
+  
+  print(i)
+}
+
+
+date_comp[with(date_comp, LW_corr=="D" & RW_corr=="B"),]$LW_corr<-"A"
+date_comp[with(date_comp, LW_corr=="B" & RW_corr=="D"),]$RW_corr<-"A"
+#this sets any nights where 1 bird was seen feeding and another or maybe the same bird fed again
+# to keep the same as the 15 & 16 data we just say only the bird that was seen was there and 
+#that the other bird did not return, bit harsh but their sampling was more intense than ours
+
+date_comp$LW_assn<-date_comp$LW_corr
+date_comp$RW_assn<-date_comp$RW_corr
+
+fun_single<-function(x) 
+{ 
+  LWO<-sample(c("B", "A"),1,)
+  if(LWO=="B"){RWO<-"A"}else{RWO<-"B"}
+  
+  return(c(LWO, RWO))}
+
+out<-lapply(date_comp[date_comp$LW_corr=="D",]$LW, FUN=fun_single)  
+
+date_comp[date_comp$LW_corr=="D",]$LW_assn<-unlist(out)[seq(1,(length(unlist(out))-1),2)]
+date_comp[date_comp$LW_corr=="D",]$RW_assn<-unlist(out)[seq(2,length(unlist(out)),2)]
+
+# writing out nest_comp
+write.csv(date_comp, "R_analyses_data/LHI_2014_nest_attendance_cleaned.csv", row.names=F, quote=F)
 
 
 ### Parameters
 
-D1="2016-02-05"
-D2="2016-03-12" 
+D1="2014-02-05"
+D2="2014-02-25" 
 longallow=FALSE
 feed_fun=fun_single
 
