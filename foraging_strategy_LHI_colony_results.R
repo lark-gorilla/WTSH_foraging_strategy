@@ -94,13 +94,14 @@ summary(tar_comp[tar_comp$Date=="17/02/2015" & tar_comp$NestID %in% comparable_n
 
 ## bootstrapping
 bs1000_tl<-data.frame(tLength=seq(1:25))
+bs1000_Rtl<-data.frame(tLength=seq(1:25))
 bs1000_Ntl<-expand.grid(tLength=seq(1:25), NestID=unique(nest_comp$NestID))
 mean_tl<-data.frame(NestID=unique(nest_comp$NestID))
 
 for(h in 1:1000)
   
 {
-  out<-lapply(nest_comp[nest_comp$LW_corr=="D",]$diff, FUN=feed_fun)  
+  out<-lapply(nest_comp[nest_comp$LW_corr=="D",]$NestID, FUN=feed_fun)  
   
   nest_comp[nest_comp$LW_corr=="D",]$LW_assn<-unlist(out)[seq(1,(length(unlist(out))-1),2)]
   nest_comp[nest_comp$LW_corr=="D",]$RW_assn<-unlist(out)[seq(2,length(unlist(out)),2)]
@@ -172,6 +173,7 @@ for(h in 1:1000)
     for(j in unique(df1$Var1))
       {
       tripPropN[tripPropN$NestID==i & tripPropN$tLength==j,]$tProp<-df1[df1$Var1==j,]$TripProp
+      
       }
     
   }
@@ -195,15 +197,21 @@ for(h in 1:1000)
   tripPropB<-NULL
   for(i in 1:25)
   { 
-    df1<-data.frame(tLength=i, tProp=sum(trip_propz[trip_propz$Var1==i,]$TripProp)/length(unique(trip_propz$BirdID2)))
+    df1<-data.frame(tLength=i,
+                    tFreq=sum(trip_propz[trip_propz$Var1==i,]$Freq),
+                    tProp=sum(trip_propz[trip_propz$Var1==i,]$TripProp)/length(unique(trip_propz$BirdID2)))
     tripPropB<-rbind(tripPropB, df1)
   }
   # ~~**
   
-  # compile birds bootstrap
+  
+  # compile birds bootstrap proportion
   bs1000_tl<-cbind(bs1000_tl, tripPropB[,2] )
   names(bs1000_tl)[names(bs1000_tl)=="tripPropB[, 2]"]<-paste("run", h, sep="_")
-
+  
+  # compile birds bootstrap raw
+  bs1000_Rtl<-cbind(bs1000_Rtl, tripPropB[,3] )
+  names(bs1000_Rtl)[names(bs1000_Rtl)=="tripPropB[, 3]"]<-paste("run", h, sep="_")
   
   # compile nests bootstrap
   bs1000_Ntl<-cbind(bs1000_Ntl, tripPropN[,3] )
@@ -222,7 +230,8 @@ bs_smry<-data.frame(tLength=seq(1:25))
 bs_smry$mean_prop<-apply(bs1000_tl[,2:1001],1,mean, na.rm=T)
 bs_smry$sd_prop<-apply(bs1000_tl[,2:1001],1,sd, na.rm=T)
 
-bs_smry[bs_smry==0]<-NA #makes graph neater 
+bs_smry[bs_smry$mean_prop==0,]$sd_prop<-NA #makes graph neater 
+bs_smry[bs_smry$mean_prop==0,]$mean_prop<-NA
 
 limmy<-max(na.omit(bs_smry)$tLength)+1
 
@@ -241,7 +250,8 @@ bs_Nsmry<-bs1000_Ntl[,1:2]
 bs_Nsmry$mean_prop<-apply(bs1000_Ntl[,3:1002],1,mean, na.rm=T)
 bs_Nsmry$sd_prop<-apply(bs1000_Ntl[,3:1002],1,sd, na.rm=T)
 
-bs_Nsmry[bs_Nsmry==0]<-NA #makes graph neater 
+bs_Nsmry[bs_Nsmry$mean_prop==0,]$sd_prop<-NA #makes graph neater 
+bs_Nsmry[bs_Nsmry$mean_prop==0,]$mean_prop<-NA#makes graph neater 
 
 limits <- aes(ymax = mean_prop + sd_prop, ymin=mean_prop - sd_prop)
 pp<-ggplot(bs_Nsmry, aes(x=tLength, y=mean_prop))
