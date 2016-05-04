@@ -113,21 +113,5 @@ date_comp[date_comp$LW_corr=="D",]$RW_assn<-unlist(out)[seq(2,length(unlist(out)
 # writing out nest_comp
 write.csv(date_comp, "R_analyses_data/LHI_2014_nest_attendance_cleaned.csv", row.names=F, quote=F)
 
-nest_comp<-read.csv("R_analyses_data/LHI_2014_nest_attendance_cleaned.csv", h=T)
-nest_comp$Date<-nest_comp$Date_hack
-nest_comp$Date<-ymd(nest_comp$Date)
-
-fun_single<-function(x) 
-{ 
-  LWO<-sample(c("B", "A"),1,)
-  if(LWO=="B"){RWO<-"A"}else{RWO<-"B"}
-  return(c(LWO, RWO))}
-
-### Parameters
-
-D1="2004-01-31"
-D2="2004-02-28" 
-longallow=FALSE
-feed_fun=fun_single
 
 

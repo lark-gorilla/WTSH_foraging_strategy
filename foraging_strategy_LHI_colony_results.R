@@ -206,11 +206,11 @@ for(h in 1:1000)
   
   
   # compile birds bootstrap proportion
-  bs1000_tl<-cbind(bs1000_tl, tripPropB[,2] )
+  bs1000_tl<-cbind(bs1000_tl, tripPropB[,3] )
   names(bs1000_tl)[names(bs1000_tl)=="tripPropB[, 2]"]<-paste("run", h, sep="_")
   
   # compile birds bootstrap raw
-  bs1000_Rtl<-cbind(bs1000_Rtl, tripPropB[,3] )
+  bs1000_Rtl<-cbind(bs1000_Rtl, tripPropB[,2] )
   names(bs1000_Rtl)[names(bs1000_Rtl)=="tripPropB[, 3]"]<-paste("run", h, sep="_")
   
   # compile nests bootstrap

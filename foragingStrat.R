@@ -3,12 +3,12 @@
 # Function creates dataframe for plotting the foraging strategy of a sampled seabird colony. The function
 # uses the date when each individual of a breeding pair returned to the chick to create a histogram of trip length 
 # for the whole colony. Where it is unknown which indivudual returned to feed the chick, the function randomly
-# ONE individual of the pair, for each nest this process is bootstrapped 1000 times. The funtion outputs the
+# ONE individual of the pair, for each nest this process is bootstrapped 1000 times (default can be changed). The funtion outputs the
 # raw histogram data for all birds (binned by trip length/day) and also the proportion of time that each bird 
 # spent undertaking those trips (a longer trip carries more weight proportionally)
 
-foragingStrat<-function(nest_data=nest_comp, D1="2016-02-05"
-                        ,D2="2016-03-12", longallow=FALSE)
+foragingStrat<-function(nest_comp=mynestdata, D1="2016-02-05"
+                        ,D2="2016-03-12", longallow=FALSE, Nruns=1000)
 {
 
 ## create simple predictive model to predict when feeding by both adults occurs
@@ -57,7 +57,7 @@ bs1000_Rtl<-data.frame(tLength=seq(1:25))
 bs1000_Ntl<-expand.grid(tLength=seq(1:25), NestID=unique(nest_comp$NestID))
 mean_tl<-data.frame(NestID=unique(nest_comp$NestID))
 
-for(h in 1:10)
+for(h in 1:Nruns)
   
 {
   out<-lapply(nest_comp[nest_comp$LW_corr=="D",]$NestID, FUN=feed_fun)  
@@ -182,6 +182,6 @@ for(h in 1:10)
   print(h)
 }
 
-return(list(bs1000_tl, bs1000_Rtl, bs1000_Ntl, mean_tl))
+return(list(bs1000_tl=bs1000_tl, bs1000_Rtl=bs1000_Rtl, bs1000_Ntl=bs1000_Ntl, mean_tl=mean_tl))
 }
 
