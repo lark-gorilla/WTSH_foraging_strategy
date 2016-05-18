@@ -68,6 +68,9 @@ for(h in 1:Nruns)
   all_trips<-NULL
   for(i in unique(nest_comp$NestID))
   {
+    D1_mod<-nest_comp[nest_comp$NestID==i,]$Date[min( min(which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1 & nest_comp$Date<=D2,]$LW_corr=="B")), 
+                 min(which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1 & nest_comp$Date<=D2,]$RW_corr=="B")))]
+    
     for(j in c("LW", "RW"))
     {  
       if(longallow==TRUE)
@@ -75,20 +78,20 @@ for(h in 1:Nruns)
         backs<-NULL
         if(j=="LW")
         {
-          backs<-which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1 & nest_comp$Date<=D2,]$LW_assn=="B")
-          if(max(backs)<nrow(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1 & nest_comp$Date<=D2,]))
+          backs<-which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1_mod & nest_comp$Date<=D2,]$LW_assn=="B")
+          if(max(backs)<nrow(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1_mod & nest_comp$Date<=D2,]))
           {
-            backs<-c(backs, which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1,]$LW_assn=="B")[length(backs)+1])
+            backs<-c(backs, which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1_mod,]$LW_assn=="B")[length(backs)+1])
             backs<-na.omit(backs)
           }
         }
         
         if(j=="RW")
         {
-          backs<-which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1 & nest_comp$Date<=D2,]$RW_assn=="B")
-          if(max(backs)<nrow(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1 & nest_comp$Date<=D2,]))
+          backs<-which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1_mod & nest_comp$Date<=D2,]$RW_assn=="B")
+          if(max(backs)<nrow(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1_mod & nest_comp$Date<=D2,]))
           {
-            backs<-c(backs, which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1,]$RW_assn=="B")[length(backs)+1])
+            backs<-c(backs, which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1_mod,]$RW_assn=="B")[length(backs)+1])
             backs<-na.omit(backs)
           }
         }
@@ -98,9 +101,9 @@ for(h in 1:Nruns)
       {  
         backs<-NULL
         if(j=="LW")
-        {backs<-which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1 & nest_comp$Date<=D2,]$LW_assn=="B")}
+        {backs<-which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1_mod & nest_comp$Date<=D2,]$LW_assn=="B")}
         if(j=="RW")
-        {backs<-which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1 & nest_comp$Date<=D2,]$RW_assn=="B")}
+        {backs<-which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1_mod & nest_comp$Date<=D2,]$RW_assn=="B")}
       }
       
       trip_lz<-NULL  
