@@ -8,7 +8,7 @@
 # spent undertaking those trips (a longer trip carries more weight proportionally)
 
 foragingStrat<-function(nest_comp=mynestdata, D1="2016-02-05"
-                        ,D2="2016-03-12", longallow=FALSE, Nruns=1000)
+                        ,D2="2016-03-12", longallow=FALSE, Nruns=1000, remUnkowns=FALSE)
 {
 
 ## create simple predictive model to predict when feeding by both adults occurs
@@ -106,12 +106,23 @@ for(h in 1:Nruns)
         {backs<-which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1_mod & nest_comp$Date<=D2,]$RW_assn=="B")}
       }
       
-      trip_lz<-NULL  
-      for(k in 2:length(backs))
+      if(remUnkowns=FALSE)
+        {
+        trip_lz<-diff(backs)
+        }
+      
+      if(remUnkowns=TRUE)
       {
-        tl1<-backs[k]-backs[k-1]
-        trip_lz<-c(trip_lz, tl1) 
+        unknownz<-which(nest_comp[nest_comp$NestID==i& nest_comp$Date>=D1 & nest_comp$Date<=D2,]$RW_corr=="D")
+        trip_lz<-NULL  
+        for(k in 2:length(backs))
+        {
+          if(TRUE %in% (unknownz %in% backs[k-1]:backs[k])){next}
+          tl1<-backs[k]-backs[k-1]
+          trip_lz<-c(trip_lz, tl1) 
+        }
       }
+      
       df_internal<-data.frame(NestID=i, BirdID=j, tLength=trip_lz)
       all_trips<-rbind(all_trips, df_internal)
     }
