@@ -776,6 +776,8 @@ nest_comp[nest_comp$RW=="?",]$RW<-"D"
 data.frame(aggregate(LW~NestID, data=nest_comp, FUN=function(x){sort(unique(x))}),
 aggregate(LW~NestID, data=nest_comp, FUN=function(x){table(x)}))
 
+# kill dates > 8 april as theyre not sampled
+nest_comp<-nest_comp[nest_comp$DateTime<"2012-04-08 00:00:00",]
 
 
 nest_clean<-NULL
@@ -901,6 +903,8 @@ nest_comp[nest_comp$RW=="?",]$RW<-"D"
 data.frame(aggregate(LW~NestID, data=nest_comp, FUN=function(x){sort(unique(x))}),
            aggregate(LW~NestID, data=nest_comp, FUN=function(x){table(x)}))
 
+# kill dates > 31 march as theyre not sampled
+nest_comp<-nest_comp[nest_comp$DateTime<"2013-03-31 00:00:00",]
 
 
 nest_clean<-NULL
