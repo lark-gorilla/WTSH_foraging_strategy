@@ -196,7 +196,7 @@ for(h in 1:Nruns)
   #compile mean trips per nest
   mean_tl<-cbind(mean_tl,agg1[,2])
   names(mean_tl)[names(mean_tl)=="agg1[, 2]"]<-paste("run", h, sep="_")
-  print(h)
+  #print(h)
 }
 
 return(list(bs1000_tl=bs1000_tl, bs1000_Rtl=bs1000_Rtl, bs1000_Ntl=bs1000_Ntl, mean_tl=mean_tl))
